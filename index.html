@@ -16,6 +16,63 @@
   <div class="orb orb-3"></div>
 </div>
 
+<!-- LOGIN MODAL -->
+<div class="login-container" id="login-container">
+  <div class="login-box">
+    <div class="login-header">
+      <div class="login-icon">🎓</div>
+      <h1>AkademikAP</h1>
+      <p>Portal Akademik Administrasi Perkantoran PNUP</p>
+    </div>
+    <form onsubmit="handleLogin(event)">
+      <div class="login-form">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" id="login-username" class="form-input" placeholder="Masukkan username" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="login-password" class="form-input" placeholder="Masukkan password" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 20px;">
+          🔐 Login
+        </button>
+      </div>
+    </form>
+    <div class="login-hint">
+      <p>Demo: username <code>admin</code> | password <code>admin123</code></p>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal-overlay" id="modal-change-password">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title">Ganti Password</div>
+      <div class="modal-sub">Ubah password akun Anda</div>
+    </div>
+    <form onsubmit="handleChangePassword(event)">
+      <div class="form-group full">
+        <label class="form-label">Password Lama <span class="req">*</span></label>
+        <input type="password" id="pwd-old" class="form-input" placeholder="Masukkan password lama" required>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Password Baru <span class="req">*</span></label>
+        <input type="password" id="pwd-new" class="form-input" placeholder="Masukkan password baru" required>
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Konfirmasi Password Baru <span class="req">*</span></label>
+        <input type="password" id="pwd-confirm" class="form-input" placeholder="Konfirmasi password baru" required>
+      </div>
+    </form>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeChangePasswordModal()">Batal</button>
+      <button class="btn btn-primary" onclick="handleChangePassword(event)">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
 <button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
 <div class="sidebar-overlay" id="sidebar-overlay"></div>
 <div class="toast-container" id="toast-container"></div>
@@ -46,12 +103,14 @@
     <div class="sidebar-footer">
       <button class="theme-toggle" onclick="toggleTheme()">🌙 Mode Gelap</button>
       <div class="user-card">
-        <div class="user-avatar">A</div>
+        <div class="user-avatar" id="user-avatar">A</div>
         <div class="user-info">
-          <div class="user-name">Administrator</div>
+          <div class="user-name" id="user-display">Administrator</div>
           <div class="user-role">Prodi Administrasi Perkantoran</div>
         </div>
       </div>
+      <button class="btn-footer" onclick="openChangePasswordModal()" title="Ganti Password">🔑 Ganti Password</button>
+      <button class="btn-footer btn-logout" onclick="handleLogout()" title="Logout">🚪 Logout</button>
     </div>
   </aside>
 
