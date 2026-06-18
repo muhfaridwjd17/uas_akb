@@ -10,9 +10,37 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+/* SCROLLBAR VERTIKAL */
+::-webkit-scrollbar { 
+  width: 6px; 
+  height: 5px;
+}
+::-webkit-scrollbar-track { 
+  background: transparent; 
+}
+::-webkit-scrollbar-thumb { 
+  background: rgba(52, 211, 153, 0.5);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: var(--accent);
+}
+
+/* SCROLLBAR HORIZONTAL (untuk tabel) */
+.nilai-table-container::-webkit-scrollbar {
+  height: 5px;
+}
+.nilai-table-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nilai-table-container::-webkit-scrollbar-thumb {
+  background: rgba(52, 211, 153, 0.4);
+  border-radius: 3px;
+}
+.nilai-table-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(52, 211, 153, 0.7);
+}
 
 /* ==================== DARK: NAVY SLATE ==================== */
 :root, [data-theme="dark"] {
