@@ -144,7 +144,7 @@ body {
 
 /* ==================== LAYOUT ==================== */
 .app-wrapper { position: relative; z-index: 1; }
-.main-content { margin-left: 264px; min-height: 100vh; display: flex; flex-direction: column; }
+.main-content { margin-left: 264px; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 .page { display: none; flex-direction: column; }
 .page.active { display: flex; }
 
@@ -325,7 +325,7 @@ body {
 .btn-filter-clear { padding: 9px 14px; border-radius: var(--radius-md); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: var(--trans); background: var(--bg-glass); border: 1.5px solid var(--border); color: var(--text-muted); }
 .btn-filter-clear:hover { color: var(--text-primary); border-color: var(--border-h); }
 
-.nilai-table-container { overflow-x: auto; border-radius: var(--radius-lg); border: 1.5px solid var(--border); }
+.nilai-table-container { overflow-x: auto; overflow-y: hidden; border-radius: var(--radius-lg); border: 1.5px solid var(--border); padding-bottom: 8px; }
 [data-theme="light"] .nilai-table-container { box-shadow: var(--shadow-sm); }
 .data-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .data-table-center th, .data-table-center td { text-align: center; }
