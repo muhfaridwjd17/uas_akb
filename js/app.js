@@ -879,8 +879,13 @@ function renderNilaiTable() {
   }
 
   wrap.innerHTML = `
+    <div class="export-buttons">
+      <button class="btn btn-print" onclick="printNilaiTable()">🖨️ Print</button>
+      <button class="btn btn-pdf" onclick="exportNilaiPDF()">📄 Export PDF</button>
+      <button class="btn btn-excel" onclick="exportNilaiExcel()">📊 Export Excel</button>
+    </div>
     <div class="nilai-table-container">
-      <table class="data-table data-table-center">
+      <table class="data-table data-table-center" id="nilai-table-print">
         <thead>
           <tr><th class="col-left">Mahasiswa</th><th class="col-left">Mata Kuliah</th><th>Smt</th><th>Tugas</th><th>Praktik</th><th>UTS</th><th>UAS</th><th>Absen</th><th>Skor</th><th>Grade</th><th>Aksi</th></tr>
         </thead>
@@ -1020,6 +1025,119 @@ function drawRapor(rapor, mhs) {
     const ring = document.getElementById('rapor-ipk-ring');
     if (ring) ring.style.strokeDashoffset = circ - dash;
   }, 100);
+}
+
+// ================================================
+// EXPORT FUNCTIONS (Print, PDF, Excel)
+// ================================================
+function printNilaiTable() {
+  const printWindow = window.open('', '', 'width=1200,height=800');
+  const table = document.getElementById('nilai-table-print');
+  if (!table) return;
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Laporan Nilai - AkademikAP</title>
+      <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { text-align: center; color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background: #4CAF50; color: white; padding: 12px; text-align: left; border: 1px solid #ddd; }
+        td { padding: 10px; border: 1px solid #ddd; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .info { text-align: center; color: #666; margin-bottom: 20px; font-size: 12px; }
+      </style>
+    </head>
+    <body>
+      <h1>Laporan Data Nilai Mahasiswa</h1>
+      <div class="info">
+        <p>Politeknik Negeri Ujung Pandang - Prodi Administrasi Perkantoran</p>
+        <p>Tanggal: ${new Date().toLocaleDateString('id-ID')}</p>
+      </div>
+      ${table.outerHTML}
+      <script>
+        window.print();
+        window.onafterprint = () => window.close();
+      </script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
+function exportNilaiExcel() {
+  const table = document.getElementById('nilai-table-print');
+  if (!table) return;
+  
+  let csv = '\uFEFF'; // BOM untuk support charset
+  const rows = table.querySelectorAll('tr');
+  
+  rows.forEach(row => {
+    const cols = row.querySelectorAll('td, th');
+    const rowData = Array.from(cols).map(col => {
+      let text = col.textContent.replace(/"/g, '""');
+      return `"${text}"`;
+    }).join(',');
+    csv += rowData + '\n';
+  });
+  
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.setAttribute('href', URL.createObjectURL(blob));
+  link.setAttribute('download', `Nilai_Mahasiswa_${new Date().getTime()}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('✅ File Excel berhasil diunduh', 'success');
+}
+
+function exportNilaiPDF() {
+  const table = document.getElementById('nilai-table-print');
+  if (!table) return;
+  
+  // Gunakan print-to-PDF browser built-in
+  const printWindow = window.open('', '', 'width=1200,height=800');
+  const docStyle = `
+    <style>
+      body { font-family: Arial, sans-serif; margin: 15px; }
+      h1 { text-align: center; font-size: 20px; color: #333; margin-bottom: 5px; }
+      .header-info { text-align: center; font-size: 11px; color: #666; margin-bottom: 15px; }
+      table { width: 100%; border-collapse: collapse; font-size: 10px; }
+      th { background: #2d5016; color: white; padding: 8px; text-align: left; border: 1px solid #333; }
+      td { padding: 6px; border: 1px solid #999; }
+      tr:nth-child(even) { background: #f5f5f5; }
+      .strong { font-weight: bold; }
+      @media print { body { margin: 0; } }
+    </style>
+  `;
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Laporan Nilai - AkademikAP</title>
+      ${docStyle}
+    </head>
+    <body>
+      <h1>LAPORAN DATA NILAI MAHASISWA</h1>
+      <div class="header-info">
+        <p><strong>Politeknik Negeri Ujung Pandang</strong><br>
+        Program Studi Administrasi Perkantoran<br>
+        Tanggal Cetak: ${new Date().toLocaleDateString('id-ID', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</p>
+      </div>
+      ${table.outerHTML}
+      <script>
+        setTimeout(() => { window.print(); }, 500);
+        window.onafterprint = () => window.close();
+      </script>
+    </body>
+    </html>
+  `);
+  printWindow.document.close();
 }
 
 // ================================================
