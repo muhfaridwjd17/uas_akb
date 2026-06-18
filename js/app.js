@@ -68,12 +68,12 @@ function handleLogout() {
 
 function openChangePasswordModal() {
   const modal = document.getElementById('modal-change-password');
-  if (modal) modal.classList.add('active');
+  if (modal) modal.classList.add('open');
 }
 
 function closeChangePasswordModal() {
   const modal = document.getElementById('modal-change-password');
-  if (modal) modal.classList.remove('active');
+  if (modal) modal.classList.remove('open');
   document.getElementById('pwd-old').value = '';
   document.getElementById('pwd-new').value = '';
   document.getElementById('pwd-confirm').value = '';
