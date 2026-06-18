@@ -4,7 +4,7 @@
 //  Google Apps Script kamu (Deploy > Manage deployments)
 // ================================================
 
-const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzb_hs0KK0IvBfavBv4A_XIowqL2INMM370qAbzqcaI1-KsYr8gqLM0ZA78LDncXSZzEg/exec";
+const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyLqhU-ou978Ysh3aPaWGB-ZE3ZPxGHWGwF-sD2T24yoa08OWVtq6cV5sKcnLXYihuc9w/exec";
 
 const CONFIG = {
   namaInstitusi: "Politeknik Negeri Ujung Pandang",
