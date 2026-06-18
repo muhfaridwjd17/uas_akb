@@ -3,6 +3,113 @@
 //  Portal Administrasi Perkantoran PNUP
 // ================================================
 
+// ---- AUTH & SESSION ----
+const AUTH = {
+  users: {
+    'admin': 'admin123'  // Default: username=admin, password=admin123
+  },
+  currentUser: null
+};
+
+// Load session dari localStorage
+function loadSession() {
+  const session = localStorage.getItem('akademikap_session');
+  if (session) {
+    AUTH.currentUser = session;
+    hideLoginContainer();
+  } else {
+    showLoginContainer();
+  }
+}
+
+function showLoginContainer() {
+  const loginContainer = document.getElementById('login-container');
+  if (loginContainer) loginContainer.classList.remove('hidden');
+  const appWrapper = document.querySelector('.app-wrapper');
+  if (appWrapper) appWrapper.style.display = 'none';
+}
+
+function hideLoginContainer() {
+  const loginContainer = document.getElementById('login-container');
+  if (loginContainer) loginContainer.classList.add('hidden');
+  const appWrapper = document.querySelector('.app-wrapper');
+  if (appWrapper) appWrapper.style.display = 'block';
+}
+
+function handleLogin(e) {
+  e.preventDefault();
+  const username = document.getElementById('login-username').value;
+  const password = document.getElementById('login-password').value;
+  
+  if (AUTH.users[username] && AUTH.users[username] === password) {
+    AUTH.currentUser = username;
+    localStorage.setItem('akademikap_session', username);
+    document.getElementById('user-display').textContent = username.charAt(0).toUpperCase() + username.slice(1);
+    document.getElementById('user-avatar').textContent = username.charAt(0).toUpperCase();
+    showToast(`✅ Login berhasil sebagai ${username}!`, 'success');
+    hideLoginContainer();
+    navigate('dashboard');
+  } else {
+    showToast('❌ Username atau password salah!', 'error');
+  }
+  
+  document.getElementById('login-username').value = '';
+  document.getElementById('login-password').value = '';
+}
+
+function handleLogout() {
+  if (confirm('Yakin ingin logout?')) {
+    localStorage.removeItem('akademikap_session');
+    AUTH.currentUser = null;
+    showToast('👋 Logout berhasil!', 'info');
+    showLoginContainer();
+  }
+}
+
+function openChangePasswordModal() {
+  const modal = document.getElementById('modal-change-password');
+  if (modal) modal.classList.add('active');
+}
+
+function closeChangePasswordModal() {
+  const modal = document.getElementById('modal-change-password');
+  if (modal) modal.classList.remove('active');
+  document.getElementById('pwd-old').value = '';
+  document.getElementById('pwd-new').value = '';
+  document.getElementById('pwd-confirm').value = '';
+}
+
+function handleChangePassword(e) {
+  e.preventDefault();
+  const oldPwd = document.getElementById('pwd-old').value;
+  const newPwd = document.getElementById('pwd-new').value;
+  const confirmPwd = document.getElementById('pwd-confirm').value;
+  
+  if (!AUTH.currentUser) {
+    showToast('⚠️ Anda belum login!', 'error');
+    return;
+  }
+  
+  if (AUTH.users[AUTH.currentUser] !== oldPwd) {
+    showToast('❌ Password lama tidak sesuai!', 'error');
+    return;
+  }
+  
+  if (newPwd.length < 6) {
+    showToast('⚠️ Password baru minimal 6 karakter!', 'warning');
+    return;
+  }
+  
+  if (newPwd !== confirmPwd) {
+    showToast('❌ Konfirmasi password tidak sesuai!', 'error');
+    return;
+  }
+  
+  AUTH.users[AUTH.currentUser] = newPwd;
+  showToast('✅ Password berhasil diubah!', 'success');
+  closeChangePasswordModal();
+}
+
 // ---- STATE ----
 const STATE = {
   currentPage: 'dashboard',
@@ -1144,6 +1251,8 @@ function exportNilaiPDF() {
 // INIT
 // ================================================
 document.addEventListener('DOMContentLoaded', () => {
+  loadSession();  // Load session pertama kali
+  
   const savedTheme = localStorage.getItem('akademikap_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', savedTheme);
   document.querySelectorAll('.theme-toggle').forEach(b => b.textContent = savedTheme === 'dark' ? '🌙 Mode Gelap' : '☀️ Mode Terang');
