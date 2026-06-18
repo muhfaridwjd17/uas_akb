@@ -144,7 +144,7 @@ body {
 
 /* ==================== LAYOUT ==================== */
 .app-wrapper { position: relative; z-index: 1; }
-.main-content { margin-left: 264px; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+.main-content { margin-left: 264px; min-height: 100vh; display: flex; flex-direction: column; overflow-x: visible; }
 .page { display: none; flex-direction: column; }
 .page.active { display: flex; }
 
