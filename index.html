@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AkademikAP · Portal Akademik Administrasi Perkantoran PNUP</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="bg-grid"></div>
+<div class="bg-orbs">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<button class="mobile-toggle" onclick="toggleSidebar()">☰</button>
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+<div class="toast-container" id="toast-container"></div>
+
+<div class="app-wrapper">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-badge">
+        <div class="logo-icon">🎓</div>
+        <div class="logo-text">AkademikAP</div>
+      </div>
+      <div class="sidebar-tagline">Portal Akademik Administrasi Perkantoran</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Menu Utama</div>
+      <a class="nav-item active" data-page="dashboard"><span class="nav-icon">🏠</span> Dashboard</a>
+      <a class="nav-item" data-page="rapor"><span class="nav-icon">📋</span> Rapor &amp; KHS</a>
+      <a class="nav-item" data-page="nilai"><span class="nav-icon">📝</span> Input Nilai</a>
+
+      <div class="nav-section-label">Data Master</div>
+      <a class="nav-item" data-page="mahasiswa"><span class="nav-icon">🎓</span> Mahasiswa</a>
+      <a class="nav-item" data-page="dosen"><span class="nav-icon">🧑‍🏫</span> Dosen</a>
+      <a class="nav-item" data-page="staf"><span class="nav-icon">👥</span> Staf</a>
+      <a class="nav-item" data-page="matkul"><span class="nav-icon">📚</span> Mata Kuliah</a>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="theme-toggle" onclick="toggleTheme()">🌙 Mode Gelap</button>
+      <div class="user-card">
+        <div class="user-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name">Administrator</div>
+          <div class="user-role">Prodi Administrasi Perkantoran</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    <header class="topbar">
+      <div>
+        <div class="topbar-title" id="topbar-title">Dashboard</div>
+        <div class="topbar-sub" id="topbar-sub">Ringkasan data akademik</div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-icon" onclick="toggleTheme()" id="theme-btn-top" title="Ganti tema">🌙</button>
+        <button class="btn-icon" onclick="loadAllData(true).then(()=>navigate(STATE.currentPage))" title="Muat ulang data">🔄</button>
+      </div>
+    </header>
+
+    <!-- PAGE: DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <section class="hero-section">
+        <div class="hero-tag"><div class="hero-tag-dot"></div>Sistem Akademik Aktif</div>
+        <h1 class="hero-heading">Kelola Akademik <span class="gradient-text">Lebih Rapi</span>,<br>Pantau <span class="gradient-text">IPK</span> Lebih Mudah</h1>
+        <p class="hero-sub">Portal terpadu untuk mengelola data mahasiswa, dosen, staf, mata kuliah, dan nilai Program Studi Administrasi Perkantoran — Politeknik Negeri Ujung Pandang.</p>
+        <div class="hero-actions">
+          <button class="btn btn-primary btn-lg" onclick="navigate('nilai')">📝 Input Nilai</button>
+          <button class="btn btn-secondary btn-lg" onclick="navigate('rapor')">📋 Lihat Rapor</button>
+        </div>
+        <div class="hero-stats">
+          <div class="stat-item"><div class="stat-value" id="dash-mahasiswa">0</div><div class="stat-label">Mahasiswa</div></div>
+          <div class="stat-item"><div class="stat-value" id="dash-dosen">0</div><div class="stat-label">Dosen</div></div>
+          <div class="stat-item"><div class="stat-value" id="dash-matkul">0</div><div class="stat-label">Mata Kuliah</div></div>
+          <div class="stat-item"><div class="stat-value" id="dash-nilai">0</div><div class="stat-label">Nilai Tercatat</div></div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-header"><div class="section-eyebrow">Performa</div><div class="section-title">Ringkasan IPK Program Studi</div></div>
+        <div class="ipk-card" id="dash-ipk-card"></div>
+      </section>
+
+      <section class="section" style="padding-top:0;">
+        <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:24px;">
+          <div>
+            <div class="section-header"><div class="section-eyebrow">Aktivitas</div><div class="section-title" style="font-size:16px;">Nilai Terbaru</div></div>
+            <div class="card"><div class="card-body" id="recent-nilai"></div></div>
+          </div>
+          <div>
+            <div class="section-header"><div class="section-eyebrow">Peringkat</div><div class="section-title" style="font-size:16px;">Top 5 IPK</div></div>
+            <div class="card"><div class="card-body" id="top-mahasiswa"></div></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- PAGE: MAHASISWA -->
+    <div class="page" id="page-mahasiswa">
+      <section class="section">
+        <div class="section-header"><div class="section-eyebrow">Data Master</div><h2 class="section-title">Data Mahasiswa</h2><p class="section-sub">Kelola data induk mahasiswa Program Studi Administrasi Perkantoran</p></div>
+        <div id="mahasiswa-content"></div>
+      </section>
+    </div>
+
+    <!-- PAGE: DOSEN -->
+    <div class="page" id="page-dosen">
+      <section class="section">
+        <div class="section-header"><div class="section-eyebrow">Data Master</div><h2 class="section-title">Data Dosen</h2><p class="section-sub">Kelola data induk dosen pengajar</p></div>
+        <div id="dosen-content"></div>
+      </section>
+    </div>
+
+    <!-- PAGE: STAF -->
+    <div class="page" id="page-staf">
+      <section class="section">
+        <div class="section-header"><div class="section-eyebrow">Data Master</div><h2 class="section-title">Data Staf</h2><p class="section-sub">Kelola data induk staf administrasi</p></div>
+        <div id="staf-content"></div>
+      </section>
+    </div>
+
+    <!-- PAGE: MATA KULIAH -->
+    <div class="page" id="page-matkul">
+      <section class="section">
+        <div class="section-header"><div class="section-eyebrow">Data Master</div><h2 class="section-title">Mata Kuliah</h2><p class="section-sub">Kelola data induk mata kuliah Program Studi Administrasi Perkantoran</p></div>
+        <div id="matkul-content"></div>
+      </section>
+    </div>
+
+    <!-- PAGE: INPUT NILAI -->
+    <div class="page" id="page-nilai">
+      <section class="section">
+        <div class="section-header"><div class="section-eyebrow">Akademik</div><h2 class="section-title">Input Nilai</h2><p class="section-sub">Input nilai mahasiswa per komponen (Tugas, Praktik, UTS, UAS, Absen) dan lihat hasil konversi otomatis</p></div>
+        <div id="nilai-content"></div>
+      </section>
+    </div>
+
+    <!-- PAGE: RAPOR & KHS -->
+    <div class="page" id="page-rapor">
+      <section class="section">
+        <div class="section-header"><div class="section-eyebrow">Akademik</div><h2 class="section-title">Rapor &amp; KHS</h2><p class="section-sub">Lihat IPS per semester, IPK kumulatif, dan status kelulusan mahasiswa</p></div>
+        <div id="rapor-content"></div>
+      </section>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL: MAHASISWA -->
+<div class="modal-overlay" id="modal-mahasiswa">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-mhs-title">Tambah Mahasiswa</div>
+      <div class="modal-sub">Lengkapi data mahasiswa di bawah ini</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">NIM <span class="req">*</span></label>
+        <input type="text" id="mhs-nim" class="form-input" placeholder="Contoh: 4522001">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Angkatan <span class="req">*</span></label>
+        <input type="text" id="mhs-angkatan" class="form-input" placeholder="Contoh: 2022">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Nama Lengkap <span class="req">*</span></label>
+        <input type="text" id="mhs-nama" class="form-input" placeholder="Nama lengkap mahasiswa">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Status</label>
+        <select id="mhs-status" class="form-select">
+          <option value="Aktif">Aktif</option>
+          <option value="Cuti">Cuti</option>
+          <option value="Lulus">Lulus</option>
+          <option value="Drop Out">Drop Out</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeMahasiswaModal()">Batal</button>
+      <button class="btn btn-primary" onclick="submitMahasiswa()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DOSEN -->
+<div class="modal-overlay" id="modal-dosen">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-dsn-title">Tambah Dosen</div>
+      <div class="modal-sub">Lengkapi data dosen di bawah ini</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">NIDN <span class="req">*</span></label>
+        <input type="text" id="dsn-nidn" class="form-input" placeholder="Contoh: 0912345678">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Jabatan</label>
+        <input type="text" id="dsn-jabatan" class="form-input" placeholder="Contoh: Lektor">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Nama Lengkap <span class="req">*</span></label>
+        <input type="text" id="dsn-nama" class="form-input" placeholder="Nama lengkap dosen">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeDosenModal()">Batal</button>
+      <button class="btn btn-primary" onclick="submitDosen()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: STAF -->
+<div class="modal-overlay" id="modal-staf">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-stf-title">Tambah Staf</div>
+      <div class="modal-sub">Lengkapi data staf di bawah ini</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Nama Lengkap <span class="req">*</span></label>
+        <input type="text" id="stf-nama" class="form-input" placeholder="Nama lengkap staf">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Jabatan <span class="req">*</span></label>
+        <input type="text" id="stf-jabatan" class="form-input" placeholder="Contoh: Staf Akademik">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeStafModal()">Batal</button>
+      <button class="btn btn-primary" onclick="submitStaf()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: MATA KULIAH -->
+<div class="modal-overlay" id="modal-matkul">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-mk-title">Tambah Mata Kuliah</div>
+      <div class="modal-sub">Lengkapi data mata kuliah di bawah ini</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Kode Mata Kuliah <span class="req">*</span></label>
+        <input type="text" id="mk-kode" class="form-input" placeholder="Contoh: AP101">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Semester <span class="req">*</span></label>
+        <input type="number" id="mk-semester" class="form-input" placeholder="Contoh: 1" min="1" max="14">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Nama Mata Kuliah <span class="req">*</span></label>
+        <input type="text" id="mk-nama" class="form-input" placeholder="Contoh: Korespondensi Bisnis">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Dosen Pengampu</label>
+        <select id="mk-dosen" class="form-select">
+          <option value="">— Pilih Dosen Pengampu —</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeMatkulModal()">Batal</button>
+      <button class="btn btn-primary" onclick="submitMatkul()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script src="data/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
