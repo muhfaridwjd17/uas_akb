@@ -79,6 +79,15 @@ function closeChangePasswordModal() {
   document.getElementById('pwd-confirm').value = '';
 }
 
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.querySelector('.icon-eye-open').style.display = showing ? 'block' : 'none';
+  btn.querySelector('.icon-eye-closed').style.display = showing ? 'none' : 'block';
+}
+
 function handleChangePassword(e) {
   e.preventDefault();
   const oldPwd = document.getElementById('pwd-old').value;
