@@ -1096,7 +1096,15 @@ function drawRapor(rapor, mhs) {
       </div>
     </div>
 
-    <div class="section-header"><div class="section-eyebrow">Kartu Hasil Studi</div><div class="section-title" style="font-size:16px;">Riwayat Nilai per Semester</div></div>
+    <div class="section-header">
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <div>
+          <div class="section-eyebrow">Kartu Hasil Studi</div>
+          <div class="section-title" style="font-size:16px;">Riwayat Nilai per Semester</div>
+        </div>
+        <button class="btn btn-primary" onclick="downloadRaporPDF('${rapor.nim}', '${mhs ? mhs.Nama : rapor.nim}')" style="white-space:nowrap; margin-left:16px;">📥 Download PDF</button>
+      </div>
+    </div>
     ${rapor.perSemester.length === 0 ? `<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">Belum ada nilai</div></div>` :
       rapor.perSemester.map(sem => `
       <div class="card fade-in" style="margin-bottom:16px;">
@@ -1245,6 +1253,179 @@ function exportNilaiPDF() {
     </html>
   `);
   printWindow.document.close();
+}
+
+function downloadRaporPDF(nim, namaLengkap) {
+  const ipkCard = document.querySelector('.ipk-card');
+  if (!ipkCard) { showToast('⚠️ Rapor belum dimuat', 'error'); return; }
+  
+  const printWindow = window.open('', '', 'width=1200,height=900');
+  const docStyle = `
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { 
+        font-family: 'Arial', sans-serif; 
+        background: white; 
+        color: #333;
+        line-height: 1.6;
+      }
+      .container { max-width: 210mm; margin: 0 auto; padding: 20mm; }
+      .header {
+        text-align: center;
+        border-bottom: 3px solid #2d5016;
+        padding-bottom: 20px;
+        margin-bottom: 30px;
+      }
+      .header h1 { font-size: 24px; color: #2d5016; margin-bottom: 5px; }
+      .header p { font-size: 12px; color: #666; }
+      .student-info {
+        background: #f5f5f5;
+        border: 2px solid #2d5016;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+      }
+      .student-info h2 { font-size: 16px; color: #2d5016; margin-bottom: 10px; }
+      .info-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 12px; }
+      .info-item { margin-bottom: 8px; }
+      .info-label { font-weight: bold; color: #2d5016; }
+      .info-value { color: #333; }
+      .section-title {
+        font-size: 16px;
+        font-weight: bold;
+        color: #2d5016;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        border-bottom: 2px solid #2d5016;
+        padding-bottom: 8px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+        font-size: 11px;
+      }
+      th {
+        background: #2d5016;
+        color: white;
+        padding: 10px;
+        text-align: left;
+        font-weight: bold;
+      }
+      td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #ddd;
+      }
+      tr:nth-child(even) { background: #f9f9f9; }
+      .text-center { text-align: center; }
+      .text-right { text-align: right; }
+      .footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+        text-align: center;
+        font-size: 11px;
+        color: #666;
+      }
+      .badge {
+        display: inline-block;
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: bold;
+        margin-right: 5px;
+      }
+      @media print {
+        body { margin: 0; padding: 0; }
+        .container { padding: 0; }
+      }
+    </style>
+  `;
+  
+  // Get data from page
+  const ipkNum = document.querySelector('.ipk-num')?.textContent || '-';
+  const predicate = document.querySelector('.ipk-badge')?.textContent || '-';
+  const status = Array.from(document.querySelectorAll('.ipk-badge')).pop()?.textContent || '-';
+  const semesters = document.querySelectorAll('.card-body');
+  
+  let semetersHTML = '';
+  semesters.forEach((sem, idx) => {
+    const semTitle = sem.querySelector('div:first-child')?.textContent || '';
+    const ipsValue = sem.querySelector('.serif')?.textContent || '0.00';
+    const table = sem.querySelector('.data-table');
+    
+    if (table && semTitle.includes('Semester')) {
+      semetersHTML += `
+        <div>
+          <div class="section-title">${semTitle.trim()} - IPS: ${ipsValue}</div>
+          ${table.outerHTML}
+        </div>
+      `;
+    }
+  });
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Rapor - ${namaLengkap}</title>
+      ${docStyle}
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>KARTU HASIL STUDI (KHS)</h1>
+          <p>Politeknik Negeri Ujung Pandang<br>Program Studi Administrasi Perkantoran</p>
+        </div>
+        
+        <div class="student-info">
+          <h2>📋 Data Mahasiswa</h2>
+          <div class="info-row">
+            <div>
+              <div class="info-item">
+                <span class="info-label">Nama:</span>
+                <span class="info-value">${namaLengkap}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">NIM:</span>
+                <span class="info-value">${nim}</span>
+              </div>
+            </div>
+            <div>
+              <div class="info-item">
+                <span class="info-label">IPK Kumulatif:</span>
+                <span class="info-value" style="font-weight:bold; color:#2d5016; font-size:14px;">${ipkNum}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Status:</span>
+                <div style="margin-top:5px;">
+                  <span class="badge" style="background:#d1fae5; color:#065f46;">${predicate}</span>
+                  <span class="badge" style="background:#dbeafe; color:#0369a1;">${status}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        ${semetersHTML}
+        
+        <div class="footer">
+          <p>Dicetak pada: ${new Date().toLocaleDateString('id-ID', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'})}</p>
+          <p style="margin-top:10px; font-size:10px;">Dokumen ini dicetak dari Sistem AkademikAP</p>
+        </div>
+      </div>
+      <script>
+        window.print();
+        window.onafterprint = () => window.close();
+      </script>
+    </body>
+    </html>
+  `;
+  
+  printWindow.document.write(html);
+  printWindow.document.close();
+  showToast(`📥 Membuka preview PDF rapor ${namaLengkap}...`, 'success');
 }
 
 // ================================================
