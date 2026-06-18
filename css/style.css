@@ -589,3 +589,15 @@ body {
 .tag { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px; font-size: 10px; font-weight: 700; }
 
 @media print { .no-print { display: none !important; } }
+
+/* ==================== TOGGLE LIHAT PASSWORD ==================== */
+.password-field-wrap { position: relative; display: flex; align-items: center; }
+.password-field-wrap .form-input { width: 100%; padding-right: 42px; }
+.btn-toggle-eye {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border: none; background: transparent;
+  cursor: pointer; padding: 0; color: var(--text-muted); transition: var(--trans-fast);
+}
+.btn-toggle-eye:hover { color: var(--accent); }
+.btn-toggle-eye svg { display: block; }
