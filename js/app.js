@@ -2237,26 +2237,37 @@ function drawStatusKuliah() {
       ${semuaRuangan.map(ruangan => {
         const data = STATUS_KULIAH_DATA[ruangan] || {};
         const isTerpakai = data.status === 'Sedang Dipakai';
-        return `<div style="border-radius:14px;padding:16px;border:2px solid ${isTerpakai ? '#10B981' : 'var(--border)'};background:${isTerpakai ? 'rgba(16,185,129,0.06)' : 'var(--bg-surface)'};transition:all 0.2s;">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-            <div>
+        const isOwner = isTerpakai && data.diklikkOleh === KETUA_SESSION.nama;
+        const isLocked = isTerpakai && !isOwner;
+        const borderColor = isLocked ? '#F59E0B' : isTerpakai ? '#10B981' : 'var(--border)';
+        const bgColor = isLocked ? 'rgba(245,158,11,0.05)' : isTerpakai ? 'rgba(16,185,129,0.06)' : 'var(--bg-surface)';
+        const dotColor = isLocked ? '#F59E0B' : isTerpakai ? '#10B981' : 'var(--text-muted)';
+
+        return `<div style="border-radius:14px;padding:16px;border:2px solid ${borderColor};background:${bgColor};transition:all 0.2s;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px;">
+            <div style="flex:1;">
               <div style="font-weight:900;font-size:15px;color:var(--text-primary);">📍 ${ruangan}</div>
               ${isTerpakai ? `
-                <div style="font-size:10px;color:#10B981;font-weight:700;margin-top:3px;">${data.kelas||''} · ${data.mataKuliah||''}</div>
-                <div style="font-size:9px;color:var(--text-muted);margin-top:1px;">Oleh: ${data.diklikkOleh||'-'} · ${data.waktuUpdate||''}</div>
+                <div style="font-size:10px;color:${dotColor};font-weight:700;margin-top:3px;">${data.kelas||''} ${data.mataKuliah ? '· '+data.mataKuliah : ''}</div>
+                <div style="font-size:9px;color:var(--text-muted);margin-top:1px;">Oleh: <strong>${data.diklikkOleh||'-'}</strong> · ${data.waktuUpdate||''}</div>
               ` : '<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Ruangan kosong / tersedia</div>'}
             </div>
-            <div style="width:12px;height:12px;border-radius:50%;background:${isTerpakai ? '#10B981' : 'var(--text-muted)'};flex-shrink:0;${isTerpakai ? 'box-shadow:0 0 8px #10B981;' : ''}"></div>
+            <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0;background:${dotColor};${isTerpakai ? 'box-shadow:0 0 8px '+dotColor+';' : ''}"></div>
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
-            <span style="font-size:12px;font-weight:700;color:${isTerpakai ? '#10B981' : 'var(--text-muted)'};">${isTerpakai ? '🔴 Sedang Dipakai' : '🟢 Kosong'}</span>
-            <button onclick="toggleStatusRuangan('${ruangan}', ${isTerpakai})"
-              style="padding:5px 14px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
-                background:${isTerpakai ? 'rgba(244,63,94,0.12)' : 'rgba(16,185,129,0.12)'};
-                border:1.5px solid ${isTerpakai ? '#F43F5E' : '#10B981'};
-                color:${isTerpakai ? '#F43F5E' : '#10B981'};">
-              ${isTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
-            </button>
+            <span style="font-size:11px;font-weight:700;color:${dotColor};">
+              ${isLocked ? '🔒 Dikunci' : isTerpakai ? '🔴 Dipakai (Kamu)' : '🟢 Kosong'}
+            </span>
+            ${isLocked
+              ? `<span style="padding:5px 12px;border-radius:8px;font-size:10px;font-weight:700;background:rgba(245,158,11,0.1);border:1.5px solid #F59E0B;color:#F59E0B;">🔒 Terkunci</span>`
+              : `<button onclick="toggleStatusRuangan('${ruangan}', ${isTerpakai})"
+                  style="padding:5px 14px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
+                    background:${isTerpakai ? 'rgba(244,63,94,0.12)' : 'rgba(16,185,129,0.12)'};
+                    border:1.5px solid ${isTerpakai ? '#F43F5E' : '#10B981'};
+                    color:${isTerpakai ? '#F43F5E' : '#10B981'};">
+                  ${isTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
+                </button>`
+            }
           </div>
         </div>`;
       }).join('')}
@@ -2282,7 +2293,9 @@ function drawStatusKuliah() {
             const warna = hariColors[j.Hari] || 'var(--accent)';
             const ruanganData = STATUS_KULIAH_DATA[j.Ruangan] || {};
             const ruanganTerpakai = ruanganData.status === 'Sedang Dipakai';
-            return `<div style="border-radius:12px;padding:14px;border:1.5px solid ${ruanganTerpakai ? '#10B981' : 'var(--border)'};background:${ruanganTerpakai ? 'rgba(16,185,129,0.05)' : 'var(--bg-surface)'};">
+            const isOwner = ruanganTerpakai && ruanganData.diklikkOleh === KETUA_SESSION.nama;
+            const isLocked = ruanganTerpakai && !isOwner;
+            return `<div style="border-radius:12px;padding:14px;border:1.5px solid ${isLocked ? '#F59E0B' : ruanganTerpakai ? '#10B981' : 'var(--border)'};background:${isLocked ? 'rgba(245,158,11,0.05)' : ruanganTerpakai ? 'rgba(16,185,129,0.05)' : 'var(--bg-surface)'};">
               <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">
                 <div>
                   <div style="font-weight:800;font-size:12px;color:var(--text-primary);">${j['Nama Mata Kuliah']}</div>
@@ -2295,13 +2308,16 @@ function drawStatusKuliah() {
                   <div style="font-size:10px;font-family:monospace;font-weight:700;color:${warna};">${formatJam(j['Jam Mulai'])} – ${formatJam(j['Jam Selesai'])}</div>
                   <div style="font-size:10px;font-weight:700;color:var(--text-primary);margin-top:2px;">📍 ${j.Ruangan}</div>
                 </div>
-                <button onclick="toggleStatusRuangan('${j.Ruangan}', ${ruanganTerpakai})"
-                  style="padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
-                    background:${ruanganTerpakai ? 'rgba(244,63,94,0.12)' : 'rgba(16,185,129,0.12)'};
-                    border:1.5px solid ${ruanganTerpakai ? '#F43F5E' : '#10B981'};
-                    color:${ruanganTerpakai ? '#F43F5E' : '#10B981'};">
-                  ${ruanganTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
-                </button>
+                ${isLocked
+                  ? `<span style="padding:5px 10px;border-radius:8px;font-size:10px;font-weight:700;background:rgba(245,158,11,0.1);border:1.5px solid #F59E0B;color:#F59E0B;">🔒 Dikunci Ketua Lain</span>`
+                  : `<button onclick="toggleStatusRuangan('${j.Ruangan}', ${ruanganTerpakai})"
+                      style="padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
+                        background:${ruanganTerpakai ? 'rgba(244,63,94,0.12)' : 'rgba(16,185,129,0.12)'};
+                        border:1.5px solid ${ruanganTerpakai ? '#F43F5E' : '#10B981'};
+                        color:${ruanganTerpakai ? '#F43F5E' : '#10B981'};">
+                      ${ruanganTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
+                    </button>`
+                }
               </div>
             </div>`;
           }).join('')}
@@ -2314,6 +2330,13 @@ function drawStatusKuliah() {
 
 async function toggleStatusRuangan(ruangan, currentlyTerpakai) {
   if (!KETUA_SESSION) { showToast('⚠️ Login terlebih dahulu', 'warning'); return; }
+
+  // Cek apakah ruangan dikunci oleh ketua lain
+  const existingData = STATUS_KULIAH_DATA[ruangan] || {};
+  if (currentlyTerpakai && existingData.diklikkOleh && existingData.diklikkOleh !== KETUA_SESSION.nama) {
+    showToast(`🔒 Ruangan ${ruangan} sedang dikunci oleh ${existingData.diklikkOleh}`, 'warning');
+    return;
+  }
 
   if (!currentlyTerpakai) {
     // Aktifkan — cari info jadwal ruangan ini
