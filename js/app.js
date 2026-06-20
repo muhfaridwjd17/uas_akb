@@ -1843,9 +1843,14 @@ async function renderJadwalPublik() {
                     if (s.selesai === selesai) endIdx = i;
                   }
                 });
-                if (startIdx === -1) startIdx = 0;
+                // Fallback jika jam tidak tepat cocok dengan slot
+                if (startIdx === -1) {
+                  SLOTS.forEach((s, i) => {
+                    if (!s.istirahat && s.mulai <= mulai && startIdx === -1) startIdx = i;
+                  });
+                }
                 if (endIdx === -1 || endIdx < startIdx) endIdx = startIdx;
-                // Hitung colspan (termasuk slot istirahat di antara)
+                // Colspan mencakup SEMUA sel dari startIdx sampai endIdx termasuk istirahat di antaranya
                 const span = endIdx - startIdx + 1;
                 rendered[startIdx] = { jadwal: j, span, warna };
                 for (let x = startIdx + 1; x <= endIdx; x++) rendered[x] = 'skip';
@@ -1854,11 +1859,10 @@ async function renderJadwalPublik() {
               return `<tr>
                 <td style="padding:8px 12px;border:1.5px solid var(--border);font-weight:800;color:${warna};background:${warna}10;white-space:nowrap;">${hari}</td>
                 ${SLOTS.map((s, i) => {
-                  if (s.istirahat) {
-                    if (rendered[i] === 'skip') return '';
-                    return `<td style="padding:4px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;"><span style="font-size:9px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
-                  }
                   if (rendered[i] === 'skip') return '';
+                  if (s.istirahat) {
+                    return `<td style="padding:4px 2px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;min-width:40px;"><span style="font-size:9px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
+                  }
                   if (rendered[i] === null) return `<td style="padding:4px;border:1.5px solid var(--border);"></td>`;
                   const { jadwal: j, span } = rendered[i];
                   return `<td colspan="${span}" style="padding:8px;border:1.5px solid var(--border);background:${warna}12;vertical-align:top;">
