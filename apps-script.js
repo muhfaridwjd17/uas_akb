@@ -21,7 +21,7 @@ const HEADERS = {
   Nilai: ['ID', 'NIM Mahasiswa', 'Nama Mahasiswa', 'Kode MK', 'Nama Mata Kuliah', 'Semester',
           'Tugas', 'Praktik', 'UTS', 'UAS', 'Absen', 'Skor Mentah', 'Skor Normalisasi',
           'Nilai Huruf', 'Bobot IP', 'Tanggal Input'],
-  Jadwal: ['ID', 'Kode MK', 'Nama Mata Kuliah', 'Hari', 'Semester', 'Jam Mulai', 'Jam Selesai', 'Ruangan', 'Dosen Pengampu', 'Tanggal Dibuat']
+  Jadwal: ['ID', 'Kode MK', 'Nama Mata Kuliah', 'Hari', 'Semester', 'Kelas', 'Jam Mulai', 'Jam Selesai', 'Ruangan', 'Dosen Pengampu', 'Tanggal Dibuat']
 };
 
 // ---- BOBOT KOMPONEN NILAI ----
@@ -162,8 +162,8 @@ function buildMataKuliahRow(data, existingId) {
 function buildJadwalRow(data, existingId) {
   const id = existingId || generateId('JDW');
   return [id, data.kodeMk || '', data.namaMatkul || '', data.hari || '', data.semester || '',
-          data.jamMulai || '', data.jamSelesai || '', data.ruangan || '', data.dosenPengampu || '',
-          existingId ? null : new Date().toISOString()];
+          data.kelas || '', data.jamMulai || '', data.jamSelesai || '', data.ruangan || '',
+          data.dosenPengampu || '', existingId ? null : new Date().toISOString()];
 }
 
 // ================================================
