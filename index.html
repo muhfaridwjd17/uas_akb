@@ -487,10 +487,8 @@
         <input type="text" id="mk-nama" class="form-input" placeholder="Contoh: Korespondensi Bisnis">
       </div>
       <div class="form-group full">
-        <label class="form-label">Dosen Pengampu</label>
-        <select id="mk-dosen" class="form-select">
-          <option value="">— Pilih Dosen Pengampu —</option>
-        </select>
+        <label class="form-label">Dosen Pengampu <span style="font-size:10px;color:var(--text-muted);">(bisa pilih lebih dari 1)</span></label>
+        <div id="mk-dosen-list" style="background:var(--bg-elevated);border:1.5px solid var(--border);border-radius:10px;padding:10px;max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;"></div>
       </div>
     </div>
     <div class="form-actions">
