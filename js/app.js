@@ -1593,10 +1593,21 @@ function openJadwalModal(data) {
   mkSelect.innerHTML = '<option value="">— Pilih Mata Kuliah —</option>' +
     STATE.data.mataKuliah.map(m => `<option value="${m.Kode}" data-nama="${m['Nama Mata Kuliah']}" data-semester="${m.Semester}" ${data && data['Kode MK']===m.Kode?'selected':''}>${m.Kode} — ${m['Nama Mata Kuliah']}</option>`).join('');
 
-  // Isi dropdown Dosen
-  const dsnSelect = document.getElementById('jadwal-dosen');
-  dsnSelect.innerHTML = '<option value="">— Pilih Dosen —</option>' +
-    STATE.data.dosen.map(d => `<option value="${d.Nama}" ${data && data['Dosen Pengampu']===d.Nama?'selected':''}>${d.Nama}</option>`).join('');
+  // Isi daftar dosen dengan checkbox (multi-select)
+  const dosenList = document.getElementById('jadwal-dosen-list');
+  const selectedDosen = data ? String(data['Dosen Pengampu']||'').split(',').map(d => d.trim()).filter(Boolean) : [];
+  if (dosenList) {
+    if (STATE.data.dosen.length === 0) {
+      dosenList.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px;">Belum ada data dosen — tambahkan dosen terlebih dahulu</div>';
+    } else {
+      dosenList.innerHTML = STATE.data.dosen.map(d => `
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background 0.15s;" onmouseover="this.style.background='var(--bg-glass)'" onmouseout="this.style.background='transparent'">
+          <input type="checkbox" value="${d.Nama}" ${selectedDosen.includes(d.Nama) ? 'checked' : ''}
+            style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+          <span style="font-size:12px;color:var(--text-primary);">${d.Nama}</span>
+        </label>`).join('');
+    }
+  }
 
   document.getElementById('jadwal-hari').value = data ? data.Hari : '';
   document.getElementById('jadwal-semester').value = data ? data.Semester : '';
@@ -1632,7 +1643,9 @@ async function submitJadwal() {
   const jamSelesai = (document.getElementById('jadwal-jam-selesai').value || '').substring(0, 5);
   const ruangan = document.getElementById('jadwal-ruangan').value.trim();
   const kelas = document.getElementById('jadwal-kelas').value.trim();
-  const dosen = document.getElementById('jadwal-dosen').value;
+  // Ambil semua dosen yang dicentang
+  const dosenChecked = [...document.querySelectorAll('#jadwal-dosen-list input[type="checkbox"]:checked')].map(cb => cb.value);
+  const dosen = dosenChecked.join(', ');
 
   if (!kodeMk || !hari || !semester || !jamMulai || !jamSelesai || !ruangan || !kelas) {
     showToast('⚠️ Semua field wajib kecuali Dosen harus diisi', 'warning'); return;
