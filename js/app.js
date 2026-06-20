@@ -2262,6 +2262,53 @@ function drawStatusKuliah() {
       }).join('')}
     </div>`;
 
+  // ROSTER JADWAL KELAS KETUA YANG LOGIN
+  const jadwalKelas = STATE.data.jadwal.filter(j => j.Kelas === KETUA_SESSION.kelas);
+  if (jadwalKelas.length > 0) {
+    const hariColors = { Senin:'#34D399',Selasa:'#22D3EE',Rabu:'#818CF8',Kamis:'#D4AF37',Jumat:'#F43F5E',Sabtu:'#F97316' };
+    const jadwalUrut = [...jadwalKelas].sort((a,b) => {
+      const hi = HARI_LIST.indexOf(a.Hari) - HARI_LIST.indexOf(b.Hari);
+      return hi !== 0 ? hi : formatJam(a['Jam Mulai']).localeCompare(formatJam(b['Jam Mulai']));
+    });
+
+    html += `
+      <div style="margin-top:28px;border-top:1px solid var(--border);padding-top:24px;">
+        <div style="font-weight:800;font-size:14px;color:var(--text-primary);margin-bottom:16px;">
+          📋 Jadwal Kelas <span style="color:var(--accent);">${KETUA_SESSION.kelas}</span>
+          <span style="font-size:11px;font-weight:600;color:var(--text-muted);margin-left:8px;">— Klik ruangan di bawah untuk langsung mengaktifkannya</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">
+          ${jadwalUrut.map(j => {
+            const warna = hariColors[j.Hari] || 'var(--accent)';
+            const ruanganData = STATUS_KULIAH_DATA[j.Ruangan] || {};
+            const ruanganTerpakai = ruanganData.status === 'Sedang Dipakai';
+            return `<div style="border-radius:12px;padding:14px;border:1.5px solid ${ruanganTerpakai ? '#10B981' : 'var(--border)'};background:${ruanganTerpakai ? 'rgba(16,185,129,0.05)' : 'var(--bg-surface)'};">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">
+                <div>
+                  <div style="font-weight:800;font-size:12px;color:var(--text-primary);">${j['Nama Mata Kuliah']}</div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${j['Dosen Pengampu']||'-'}</div>
+                </div>
+                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:100px;background:${warna}20;color:${warna};white-space:nowrap;border:1px solid ${warna}40;">${j.Hari}</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+                <div>
+                  <div style="font-size:10px;font-family:monospace;font-weight:700;color:${warna};">${formatJam(j['Jam Mulai'])} – ${formatJam(j['Jam Selesai'])}</div>
+                  <div style="font-size:10px;font-weight:700;color:var(--text-primary);margin-top:2px;">📍 ${j.Ruangan}</div>
+                </div>
+                <button onclick="toggleStatusRuangan('${j.Ruangan}', ${ruanganTerpakai})"
+                  style="padding:5px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
+                    background:${ruanganTerpakai ? 'rgba(244,63,94,0.12)' : 'rgba(16,185,129,0.12)'};
+                    border:1.5px solid ${ruanganTerpakai ? '#F43F5E' : '#10B981'};
+                    color:${ruanganTerpakai ? '#F43F5E' : '#10B981'};">
+                  ${ruanganTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
+                </button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }
+
   container.innerHTML = html;
 }
 
