@@ -122,7 +122,7 @@ function handleChangePassword(e) {
 // ---- STATE ----
 const STATE = {
   currentPage: 'dashboard',
-  data: { mahasiswa: [], dosen: [], staf: [], mataKuliah: [], nilai: [] },
+  data: { mahasiswa: [], dosen: [], staf: [], mataKuliah: [], nilai: [], jadwal: [] },
   loaded: false,
   editingId: null,
   raporCache: {},
@@ -186,6 +186,7 @@ async function loadAllData(force) {
     STATE.data.staf = result.data.staf || [];
     STATE.data.mataKuliah = result.data.mataKuliah || [];
     STATE.data.nilai = result.data.nilai || [];
+    STATE.data.jadwal = result.data.jadwal || [];
     STATE.loaded = true;
   }
 }
@@ -206,6 +207,7 @@ function navigate(page) {
   if (page === 'matkul') renderMatkulPage();
   if (page === 'nilai') renderNilaiPage();
   if (page === 'rapor') renderRaporPage();
+  if (page === 'jadwal') renderJadwalPage();
 
   document.getElementById('sidebar')?.classList.remove('open');
   document.getElementById('sidebar-overlay')?.classList.remove('open');
@@ -1440,6 +1442,184 @@ function downloadRaporPDF(nim, namaLengkap) {
 // ================================================
 // INIT
 // ================================================
+// ================================================
+// JADWAL KULIAH (CRUD)
+// ================================================
+const HARI_ORDER = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+
+async function renderJadwalPage() {
+  updateTopbar('Jadwal Kuliah', 'Kelola jadwal mata kuliah per hari dan jam');
+  await loadAllData();
+  const container = document.getElementById('jadwal-content');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="filter-bar-wrap">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label class="filter-label">📅 Filter Semester</label>
+          <select id="jadwal-filter-smt" class="filter-select" onchange="renderJadwalTable()">
+            <option value="all">— Semua Semester —</option>
+            ${[...new Set(STATE.data.jadwal.map(j => j.Semester).filter(Boolean))].sort((a,b)=>Number(a)-Number(b)).map(s=>`<option value="${s}">Semester ${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="filter-group" style="flex:1;">
+          <label class="filter-label">🔍 Cari</label>
+          <input type="text" id="jadwal-search" class="filter-input" placeholder="Cari mata kuliah, ruangan, dosen..." oninput="renderJadwalTable()">
+        </div>
+        <button class="btn btn-primary" onclick="openJadwalModal()">➕ Tambah Jadwal</button>
+      </div>
+    </div>
+    <div id="jadwal-table-wrap"></div>`;
+
+  renderJadwalTable();
+}
+
+function renderJadwalTable() {
+  const wrap = document.getElementById('jadwal-table-wrap');
+  if (!wrap) return;
+
+  const fSmt = document.getElementById('jadwal-filter-smt')?.value || 'all';
+  const search = (document.getElementById('jadwal-search')?.value || '').toLowerCase();
+
+  const filtered = STATE.data.jadwal.filter(j => {
+    const matchSmt = fSmt === 'all' || String(j.Semester) === String(fSmt);
+    const matchSearch = !search || Object.values(j).some(v => String(v).toLowerCase().includes(search));
+    return matchSmt && matchSearch;
+  }).sort((a, b) => {
+    const hariA = HARI_ORDER.indexOf(a.Hari), hariB = HARI_ORDER.indexOf(b.Hari);
+    if (hariA !== hariB) return hariA - hariB;
+    return (a['Jam Mulai'] || '').localeCompare(b['Jam Mulai'] || '');
+  });
+
+  if (filtered.length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🗓️</div><div class="empty-state-title">Belum ada jadwal</div><div class="empty-state-text">Klik "Tambah Jadwal" untuk menambahkan jadwal baru</div></div>`;
+    return;
+  }
+
+  const hariColors = {
+    Senin:'#34D399', Selasa:'#22D3EE', Rabu:'#818CF8',
+    Kamis:'#D4AF37', Jumat:'#F43F5E', Sabtu:'#F97316'
+  };
+
+  wrap.innerHTML = `
+    <div class="nilai-table-container">
+      <table class="data-table data-table-center">
+        <thead>
+          <tr>
+            <th>Hari</th>
+            <th>Jam</th>
+            <th>Smt</th>
+            <th class="col-left">Mata Kuliah</th>
+            <th>Ruangan</th>
+            <th class="col-left">Dosen Pengampu</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filtered.map(j => {
+            const color = hariColors[j.Hari] || 'var(--accent)';
+            return `<tr>
+              <td>
+                <span style="background:${color}20;color:${color};padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800;border:1px solid ${color}40;">${j.Hari}</span>
+              </td>
+              <td style="font-family:monospace;font-size:12px;font-weight:700;">${j['Jam Mulai']} – ${j['Jam Selesai']}</td>
+              <td>${j.Semester}</td>
+              <td class="col-left"><strong>${j['Nama Mata Kuliah']}</strong><br><span style="font-size:10px;color:var(--text-muted);">${j['Kode MK']||''}</span></td>
+              <td><span style="background:var(--bg-glass);border:1px solid var(--border);padding:2px 9px;border-radius:6px;font-size:11px;">📍 ${j.Ruangan}</span></td>
+              <td class="col-left">${j['Dosen Pengampu']||'-'}</td>
+              <td>
+                <div style="display:flex;gap:6px;justify-content:center;">
+                  <button class="btn-row-action edit" onclick='openJadwalModal(${JSON.stringify(j).replace(/'/g,"&apos;")})' title="Edit">✏️</button>
+                  <button class="btn-row-action delete" onclick="hapusJadwal('${j.ID}')" title="Hapus">🗑️</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function openJadwalModal(data) {
+  STATE.editingId = data ? data.ID : null;
+  document.getElementById('modal-jadwal-title').textContent = data ? 'Edit Jadwal' : 'Tambah Jadwal';
+
+  // Isi dropdown Mata Kuliah
+  const mkSelect = document.getElementById('jadwal-matkul');
+  mkSelect.innerHTML = '<option value="">— Pilih Mata Kuliah —</option>' +
+    STATE.data.mataKuliah.map(m => `<option value="${m.Kode}" data-nama="${m['Nama Mata Kuliah']}" data-semester="${m.Semester}" ${data && data['Kode MK']===m.Kode?'selected':''}>${m.Kode} — ${m['Nama Mata Kuliah']}</option>`).join('');
+
+  // Isi dropdown Dosen
+  const dsnSelect = document.getElementById('jadwal-dosen');
+  dsnSelect.innerHTML = '<option value="">— Pilih Dosen —</option>' +
+    STATE.data.dosen.map(d => `<option value="${d.Nama}" ${data && data['Dosen Pengampu']===d.Nama?'selected':''}>${d.Nama}</option>`).join('');
+
+  document.getElementById('jadwal-hari').value = data ? data.Hari : '';
+  document.getElementById('jadwal-semester').value = data ? data.Semester : '';
+  document.getElementById('jadwal-jam-mulai').value = data ? data['Jam Mulai'] : '';
+  document.getElementById('jadwal-jam-selesai').value = data ? data['Jam Selesai'] : '';
+  document.getElementById('jadwal-ruangan').value = data ? data.Ruangan : '';
+
+  // Auto-fill semester dari matkul jika tambah baru
+  if (!data) {
+    document.getElementById('jadwal-matkul').addEventListener('change', function() {
+      const opt = this.selectedOptions[0];
+      if (opt && opt.dataset.semester) document.getElementById('jadwal-semester').value = opt.dataset.semester;
+    }, { once: true });
+  }
+
+  document.getElementById('modal-jadwal').classList.add('open');
+}
+
+function closeJadwalModal() {
+  document.getElementById('modal-jadwal').classList.remove('open');
+}
+
+async function submitJadwal() {
+  const mkSelect = document.getElementById('jadwal-matkul');
+  const kodeMk = mkSelect.value;
+  const namaMatkulOpt = mkSelect.selectedOptions[0];
+  const namaMatkul = namaMatkulOpt ? namaMatkulOpt.dataset.nama : '';
+  const hari = document.getElementById('jadwal-hari').value;
+  const semester = document.getElementById('jadwal-semester').value;
+  const jamMulai = document.getElementById('jadwal-jam-mulai').value;
+  const jamSelesai = document.getElementById('jadwal-jam-selesai').value;
+  const ruangan = document.getElementById('jadwal-ruangan').value.trim();
+  const dosen = document.getElementById('jadwal-dosen').value;
+
+  if (!kodeMk || !hari || !semester || !jamMulai || !jamSelesai || !ruangan) {
+    showToast('⚠️ Semua field wajib kecuali Dosen harus diisi', 'warning'); return;
+  }
+
+  const payload = { kodeMk, namaMatkul, hari, semester, jamMulai, jamSelesai, ruangan, dosenPengampu: dosen };
+
+  if (STATE.editingId) {
+    payload.id = STATE.editingId;
+    await apiPost('editJadwal', payload);
+    const idx = STATE.data.jadwal.findIndex(j => j.ID === STATE.editingId);
+    if (idx > -1) STATE.data.jadwal[idx] = { ...STATE.data.jadwal[idx], 'Kode MK': kodeMk, 'Nama Mata Kuliah': namaMatkul, Hari: hari, Semester: semester, 'Jam Mulai': jamMulai, 'Jam Selesai': jamSelesai, Ruangan: ruangan, 'Dosen Pengampu': dosen };
+    showToast('✅ Jadwal berhasil diupdate', 'success');
+  } else {
+    const tempId = 'TEMP-' + Date.now();
+    await apiPost('addJadwal', payload);
+    STATE.data.jadwal.push({ ID: tempId, 'Kode MK': kodeMk, 'Nama Mata Kuliah': namaMatkul, Hari: hari, Semester: semester, 'Jam Mulai': jamMulai, 'Jam Selesai': jamSelesai, Ruangan: ruangan, 'Dosen Pengampu': dosen });
+    showToast('✅ Jadwal berhasil ditambahkan', 'success');
+  }
+
+  closeJadwalModal();
+  renderJadwalTable();
+  setTimeout(() => loadAllData(true), 1500);
+}
+
+async function hapusJadwal(id) {
+  if (!confirm('Yakin ingin menghapus jadwal ini?')) return;
+  await apiPost('deleteJadwal', { id });
+  STATE.data.jadwal = STATE.data.jadwal.filter(j => j.ID !== id);
+  showToast('🗑️ Jadwal berhasil dihapus', 'warning');
+  renderJadwalTable();
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   loadSession();  // Load session pertama kali
   
