@@ -1579,17 +1579,17 @@ function renderJadwalTable() {
 
   wrap.innerHTML = `
     <div class="nilai-table-container">
-      <table class="data-table data-table-center">
+      <table class="data-table data-table-center" style="min-width:900px;">
         <thead>
           <tr>
-            <th>Hari</th>
-            <th>Jam</th>
-            <th>Smt</th>
-            <th>Kelas</th>
+            <th style="width:90px;">Hari</th>
+            <th style="width:110px;">Jam</th>
+            <th style="width:50px;">Smt</th>
+            <th style="width:90px;">Kelas</th>
             <th class="col-left">Mata Kuliah</th>
-            <th>Ruangan</th>
+            <th style="width:90px;">Ruangan</th>
             <th class="col-left">Dosen Pengampu</th>
-            <th>Aksi</th>
+            <th style="width:80px;">Aksi</th>
           </tr>
         </thead>
         <tbody>
@@ -1597,14 +1597,19 @@ function renderJadwalTable() {
             const color = hariColors[j.Hari] || 'var(--accent)';
             return `<tr>
               <td>
-                <span style="background:${color}20;color:${color};padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800;border:1px solid ${color}40;">${j.Hari}</span>
+                <span style="background:${color}20;color:${color};padding:3px 10px;border-radius:6px;font-size:11px;font-weight:800;border:1px solid ${color}40;white-space:nowrap;">${j.Hari}</span>
               </td>
-              <td style="font-family:monospace;font-size:12px;font-weight:700;">${formatJam(j['Jam Mulai'])} – ${formatJam(j['Jam Selesai'])}</td>
-              <td>${j.Semester}</td>
-              <td><span style="background:var(--accent-subtle);color:var(--accent);padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700;border:1px solid var(--accent-border);">${j.Kelas||'-'}</span></td>
-              <td class="col-left"><strong>${j['Nama Mata Kuliah']}</strong><br><span style="font-size:10px;color:var(--text-muted);">${j['Kode MK']||''}</span></td>
-              <td><span style="background:var(--bg-glass);border:1px solid var(--border);padding:2px 9px;border-radius:6px;font-size:11px;">📍 ${j.Ruangan}</span></td>
-              <td class="col-left">${j['Dosen Pengampu']||'-'}</td>
+              <td style="font-family:monospace;font-size:12px;font-weight:700;color:${color};white-space:nowrap;">${formatJam(j['Jam Mulai'])} – ${formatJam(j['Jam Selesai'])}</td>
+              <td style="font-weight:700;">${j.Semester}</td>
+              <td><span style="background:var(--accent-subtle);color:var(--accent);padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700;border:1px solid var(--accent-border);white-space:nowrap;">${j.Kelas||'-'}</span></td>
+              <td class="col-left">
+                <div style="font-weight:800;font-size:13px;">${j['Nama Mata Kuliah']}</div>
+                <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${j['Kode MK']||''}</div>
+              </td>
+              <td>
+                <span style="background:var(--bg-glass);border:1px solid var(--border);padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap;">📍 ${j.Ruangan||'-'}</span>
+              </td>
+              <td class="col-left" style="font-size:12px;">${j['Dosen Pengampu']||'-'}</td>
               <td>
                 <div style="display:flex;gap:6px;justify-content:center;">
                   <button class="btn-row-action edit" onclick='openJadwalModal(${JSON.stringify(j).replace(/'/g,"&apos;")})' title="Edit">✏️</button>
@@ -1816,13 +1821,13 @@ async function renderJadwalPublik() {
           🎓 Kelas: ${kelas}
         </div>
         <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;table-layout:auto;">
           <thead>
             <tr>
-              <th style="padding:8px 12px;text-align:left;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:11px;font-weight:800;min-width:80px;">HARI</th>
+              <th style="padding:10px 14px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:11px;font-weight:800;min-width:80px;letter-spacing:0.5px;">HARI</th>
               ${SLOTS.map(s => s.istirahat ?
-                `<th style="padding:6px 4px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:9px;font-weight:700;color:var(--text-muted);min-width:50px;">IST<br><span style="font-size:8px;font-weight:400;">${s.mulai}<br>${s.selesai}</span></th>` :
-                `<th style="padding:6px 8px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:11px;font-weight:800;min-width:80px;">${s.no}<br><span style="font-size:8px;font-weight:400;color:var(--text-muted);">${s.mulai}<br>${s.selesai}</span></th>`
+                `<th style="padding:6px 4px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:8px;font-weight:600;color:var(--text-muted);min-width:36px;max-width:36px;"><div style="writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:1px;">IST</div><div style="font-size:7px;margin-top:2px;">${s.mulai}</div></th>` :
+                `<th style="padding:8px 6px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:13px;font-weight:900;min-width:80px;"><div>${s.no}</div><div style="font-size:8px;font-weight:400;color:var(--text-muted);margin-top:3px;">${s.mulai}–${s.selesai}</div></th>`
               ).join('')}
             </tr>
           </thead>
@@ -1874,18 +1879,18 @@ async function renderJadwalPublik() {
               });
 
               return `<tr>
-                <td style="padding:8px 12px;border:1.5px solid var(--border);font-weight:800;color:${warna};background:${warna}10;white-space:nowrap;">${hari}</td>
+                <td style="padding:10px 14px;border:1.5px solid var(--border);font-weight:800;font-size:12px;color:${warna};background:${warna}10;white-space:nowrap;text-align:center;">${hari}</td>
                 ${SLOTS.map((s, i) => {
                   if (rendered[i] === 'skip') return '';
                   if (s.istirahat) {
-                    return `<td style="padding:4px 2px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;min-width:40px;"><span style="font-size:9px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
+                    return `<td style="padding:2px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;"><span style="font-size:8px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
                   }
                   if (rendered[i] === null) return `<td style="padding:4px;border:1.5px solid var(--border);"></td>`;
                   const { jadwal: j, span } = rendered[i];
-                  return `<td colspan="${span}" style="padding:8px;border:1.5px solid var(--border);background:${warna}12;vertical-align:top;text-align:center;">
-                    <div style="font-weight:800;font-size:11px;color:var(--text-primary);margin-bottom:3px;line-height:1.3;">${j['Nama Mata Kuliah']}</div>
-                    <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">${j['Dosen Pengampu']||''}</div>
-                    <div style="font-size:10px;font-weight:700;color:${warna};">📍 ${j.Ruangan||''}</div>
+                  return `<td colspan="${span}" style="padding:10px 8px;border:1.5px solid var(--border);background:${warna}12;vertical-align:middle;text-align:center;">
+                    <div style="font-weight:800;font-size:11px;color:var(--text-primary);line-height:1.4;margin-bottom:4px;">${j['Nama Mata Kuliah']}</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">${j['Dosen Pengampu']||''}</div>
+                    <div style="font-size:10px;font-weight:700;color:${warna};padding:1px 6px;background:${warna}20;border-radius:4px;display:inline-block;">📍 ${j.Ruangan||''}</div>
                   </td>`;
                 }).join('')}
               </tr>`;
