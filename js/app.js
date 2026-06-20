@@ -785,9 +785,20 @@ function openMatkulModal(data) {
   document.getElementById('mk-nama').value = data ? data['Nama Mata Kuliah'] : '';
   document.getElementById('mk-semester').value = data ? data.Semester : '';
 
-  const dosenSelect = document.getElementById('mk-dosen');
-  dosenSelect.innerHTML = '<option value="">— Pilih Dosen Pengampu —</option>' +
-    STATE.data.dosen.map(d => `<option value="${d.Nama}" ${data && data['Dosen Pengampu']===d.Nama?'selected':''}>${d.Nama}</option>`).join('');
+  const dosenList = document.getElementById('mk-dosen-list');
+  const selectedDosen = data ? String(data['Dosen Pengampu']||'').split(',').map(d => d.trim()).filter(Boolean) : [];
+  if (dosenList) {
+    if (STATE.data.dosen.length === 0) {
+      dosenList.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px;">Belum ada data dosen — tambahkan dosen terlebih dahulu</div>';
+    } else {
+      dosenList.innerHTML = STATE.data.dosen.map(d => `
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background 0.15s;" onmouseover="this.style.background='var(--bg-glass)'" onmouseout="this.style.background='transparent'">
+          <input type="checkbox" value="${d.Nama}" ${selectedDosen.includes(d.Nama) ? 'checked' : ''}
+            style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
+          <span style="font-size:12px;color:var(--text-primary);">${d.Nama}</span>
+        </label>`).join('');
+    }
+  }
 
   document.getElementById('modal-matkul').classList.add('open');
 }
@@ -800,7 +811,8 @@ async function submitMatkul() {
   const kode = document.getElementById('mk-kode').value.trim();
   const namaMatkul = document.getElementById('mk-nama').value.trim();
   const semester = document.getElementById('mk-semester').value.trim();
-  const dosenPengampu = document.getElementById('mk-dosen').value;
+  const dosenChecked = [...document.querySelectorAll('#mk-dosen-list input[type="checkbox"]:checked')].map(cb => cb.value);
+  const dosenPengampu = dosenChecked.join(', ');
 
   if (!kode || !namaMatkul || !semester) { showToast('⚠️ Kode, Nama, dan Semester wajib diisi', 'warning'); return; }
 
