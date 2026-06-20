@@ -45,7 +45,9 @@ function konversiNilai(skor) {
 function getOrCreateSheet(name) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(name);
+
   if (!sheet) {
+    // Sheet baru — buat dari awal
     sheet = ss.insertSheet(name);
     const headers = HEADERS[name];
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
@@ -56,7 +58,44 @@ function getOrCreateSheet(name) {
     headerRange.setFontSize(11);
     sheet.setFrozenRows(1);
     sheet.autoResizeColumns(1, headers.length);
+  } else if (HEADERS[name]) {
+    // Sheet sudah ada — pastikan semua kolom yang dibutuhkan ada
+    // (migrasi otomatis kalau ada kolom baru ditambahkan)
+    const existingHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    const requiredHeaders = HEADERS[name];
+    let added = false;
+    requiredHeaders.forEach(h => {
+      if (!existingHeaders.includes(h)) {
+        // Cari posisi yang tepat sesuai urutan di HEADERS
+        const insertAfter = requiredHeaders.indexOf(h) - 1;
+        if (insertAfter >= 0) {
+          const prevHeader = requiredHeaders[insertAfter];
+          const prevIdx = existingHeaders.indexOf(prevHeader);
+          if (prevIdx >= 0) {
+            sheet.insertColumnAfter(prevIdx + 1);
+            const newColIdx = prevIdx + 2;
+            sheet.getRange(1, newColIdx).setValue(h)
+              .setBackground('#1E3A5F').setFontColor('#FFFFFF').setFontWeight('bold');
+            existingHeaders.splice(prevIdx + 1, 0, h);
+          } else {
+            // Fallback: tambah di akhir
+            const lastCol = sheet.getLastColumn() + 1;
+            sheet.getRange(1, lastCol).setValue(h)
+              .setBackground('#1E3A5F').setFontColor('#FFFFFF').setFontWeight('bold');
+            existingHeaders.push(h);
+          }
+        } else {
+          // Kolom pertama — tambah di awal
+          sheet.insertColumnBefore(1);
+          sheet.getRange(1, 1).setValue(h)
+            .setBackground('#1E3A5F').setFontColor('#FFFFFF').setFontWeight('bold');
+          existingHeaders.unshift(h);
+        }
+        added = true;
+      }
+    });
   }
+
   return sheet;
 }
 
@@ -171,26 +210,14 @@ function buildJadwalRow(data, existingId) {
 // ================================================
 function handleAdd(sheetName, rowData) {
   const sheet = getOrCreateSheet(sheetName);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  // Baca header aktual dari sheet (setelah getOrCreateSheet menjamin semua kolom ada)
+  const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const expectedHeaders = HEADERS[sheetName];
 
-  // Pastikan semua kolom yang dibutuhkan sudah ada di sheet
-  // Kalau ada kolom baru yang belum ada, tambahkan dulu
-  expectedHeaders.forEach((h, i) => {
-    if (!headers.includes(h)) {
-      const newColIdx = headers.length + 1;
-      sheet.getRange(1, newColIdx).setValue(h);
-      const headerCell = sheet.getRange(1, newColIdx);
-      headerCell.setBackground('#1E3A5F').setFontColor('#FFFFFF').setFontWeight('bold');
-      headers.push(h); // update array lokal juga
-    }
-  });
-
-  // Tulis data sesuai urutan header yang ada di sheet (bukan urutan rowData)
-  const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  // Tulis data sesuai posisi header aktual di sheet
   const orderedRow = currentHeaders.map(h => {
     const idx = expectedHeaders.indexOf(h);
-    return idx >= 0 ? (rowData[idx] !== undefined ? rowData[idx] : '') : '';
+    return idx >= 0 && rowData[idx] !== undefined ? rowData[idx] : '';
   });
 
   sheet.appendRow(orderedRow);
