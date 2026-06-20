@@ -1804,7 +1804,12 @@ async function renderJadwalPublik() {
   }
 
   let html = `
-    <div style="overflow-x:auto;">
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+      <button onclick="printJadwal()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:12px;font-weight:700;cursor:pointer;">🖨️ Print</button>
+      <button onclick="downloadJadwalPDF()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1.5px solid #F43F5E;background:rgba(244,63,94,0.08);color:#F43F5E;font-size:12px;font-weight:700;cursor:pointer;">📄 Download PDF</button>
+      <button onclick="exportJadwalExcel()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1.5px solid #10B981;background:rgba(16,185,129,0.08);color:#10B981;font-size:12px;font-weight:700;cursor:pointer;">📊 Export Excel</button>
+    </div>
+    <div id="jadwal-print-area" style="overflow-x:auto;">
       <div style="font-family:'Lora',serif;text-align:center;margin-bottom:28px;">
         <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Politeknik Negeri Ujung Pandang</div>
         <div style="font-size:20px;font-weight:700;color:var(--text-primary);">JADWAL PENGGUNAAN RUANGAN & LAB</div>
@@ -1901,8 +1906,189 @@ async function renderJadwalPublik() {
       </div>`;
   });
 
-  html += '</div>';
+  html += '</div></div>'; // tutup jadwal-print-area dan overflow div
   container.innerHTML = html;
+}
+
+// ================================================
+// JADWAL RUANGAN — PRINT, PDF, EXCEL
+// ================================================
+function printJadwal() {
+  const area = document.getElementById('jadwal-print-area');
+  if (!area) return;
+  const printWin = window.open('', '_blank');
+  printWin.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>Jadwal Penggunaan Ruangan - Prodi Administrasi Perkantoran PNUP</title>
+      <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: Arial, sans-serif; font-size:10px; color:#000; background:#fff; padding:20px; }
+        h1 { font-size:16px; text-align:center; margin-bottom:4px; }
+        h2 { font-size:13px; text-align:center; margin-bottom:2px; font-weight:600; }
+        .subtitle { font-size:10px; text-align:center; color:#555; margin-bottom:20px; }
+        .kelas-header { font-weight:800; font-size:12px; margin:20px 0 8px; padding:6px 12px; background:#1E3A5F; color:#fff; border-radius:4px; }
+        table { width:100%; border-collapse:collapse; margin-bottom:24px; font-size:9px; }
+        th { padding:6px 4px; text-align:center; border:1px solid #333; background:#1E3A5F; color:#fff; font-weight:700; }
+        td { padding:6px 4px; text-align:center; border:1px solid #999; vertical-align:middle; }
+        td.hari { font-weight:800; background:#f0f4ff; color:#1E3A5F; white-space:nowrap; }
+        td.ist { background:#f5f5f5; color:#888; font-size:8px; font-style:italic; }
+        td.has-jadwal { background:#e8f4fd; }
+        .matkul { font-weight:800; font-size:9px; line-height:1.3; margin-bottom:2px; }
+        .dosen { font-size:8px; color:#555; margin-bottom:2px; }
+        .ruangan { font-size:8px; font-weight:700; color:#1E3A5F; }
+        @media print { body { padding:10px; } @page { size: A4 landscape; margin:10mm; } }
+      </style>
+    </head>
+    <body>
+      <h1>JADWAL PENGGUNAAN RUANGAN & LAB</h1>
+      <h2>Program Studi Administrasi Perkantoran</h2>
+      <div class="subtitle">Politeknik Negeri Ujung Pandang — Semester Aktif Tahun Akademik ${new Date().getFullYear()}/${new Date().getFullYear()+1}</div>
+      ${area.innerHTML
+        .replace(/style="[^"]*color:[^";]*var\([^)]*\)[^"]*"/g, '')
+        .replace(/background:[^;]*var\([^)]*\)[^;]*/g, '')
+        .replace(/color:[^;]*var\([^)]*\)[^;]*/g, '')
+      }
+    </body>
+    </html>
+  `);
+  printWin.document.close();
+  setTimeout(() => { printWin.focus(); printWin.print(); }, 500);
+}
+
+async function downloadJadwalPDF() {
+  showToast('⏳ Menyiapkan PDF...', 'info');
+  const area = document.getElementById('jadwal-print-area');
+  if (!area) return;
+
+  // Muat jsPDF dan html2canvas
+  await Promise.all([
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'),
+    loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js')
+  ]);
+
+  const { jsPDF } = window.jspdf;
+
+  // Clone area dengan styling putih untuk PDF
+  const clone = area.cloneNode(true);
+  clone.style.cssText = 'position:fixed;top:-9999px;left:0;width:1200px;background:#fff;color:#000;padding:20px;font-family:Arial,sans-serif;';
+  // Override CSS variables ke nilai solid
+  clone.querySelectorAll('*').forEach(el => {
+    el.style.color = el.style.color || '#000';
+    el.style.borderColor = '#ccc';
+  });
+  document.body.appendChild(clone);
+
+  try {
+    const canvas = await window.html2canvas(clone, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false });
+    document.body.removeChild(clone);
+
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pdfW = pdf.internal.pageSize.getWidth();
+    const pdfH = pdf.internal.pageSize.getHeight();
+    const ratio = canvas.width / canvas.height;
+    const imgH = pdfW / ratio;
+
+    let posY = 0;
+    while (posY < canvas.height) {
+      const pageCanvas = document.createElement('canvas');
+      pageCanvas.width = canvas.width;
+      pageCanvas.height = Math.min(canvas.height - posY, canvas.width / (pdfW / pdfH));
+      const ctx = pageCanvas.getContext('2d');
+      ctx.drawImage(canvas, 0, posY, canvas.width, pageCanvas.height, 0, 0, canvas.width, pageCanvas.height);
+      if (posY > 0) pdf.addPage();
+      pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, pdfW, pdfW * pageCanvas.height / canvas.width);
+      posY += pageCanvas.height;
+    }
+
+    pdf.save(`Jadwal_AP_${new Date().getFullYear()}.pdf`);
+    showToast('✅ PDF berhasil didownload', 'success');
+  } catch(e) {
+    document.body.removeChild(clone);
+    showToast('❌ Gagal membuat PDF: ' + e.message, 'error');
+  }
+}
+
+function exportJadwalExcel() {
+  showToast('⏳ Menyiapkan Excel...', 'info');
+
+  const SLOTS_EXPORT = [
+    { no:'1', mulai:'07:30', selesai:'08:20' },
+    { no:'2', mulai:'08:20', selesai:'09:10' },
+    { no:'3', mulai:'09:10', selesai:'10:00' },
+    { no:'IST', mulai:'10:00', selesai:'10:20', istirahat:true },
+    { no:'4', mulai:'10:20', selesai:'11:10' },
+    { no:'5', mulai:'11:10', selesai:'12:00' },
+    { no:'IST', mulai:'12:00', selesai:'13:00', istirahat:true },
+    { no:'6', mulai:'13:00', selesai:'13:50' },
+    { no:'7', mulai:'13:50', selesai:'14:40' },
+    { no:'8', mulai:'14:40', selesai:'15:30' },
+    { no:'IST', mulai:'15:30', selesai:'16:00', istirahat:true },
+    { no:'9', mulai:'16:00', selesai:'16:50' },
+    { no:'10', mulai:'16:50', selesai:'17:40' },
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const kelasList = [...new Set(STATE.data.jadwal.map(j => j.Kelas).filter(Boolean))].sort();
+
+  kelasList.forEach(kelas => {
+    const jadwalKelas = STATE.data.jadwal.filter(j => j.Kelas === kelas);
+    const rows = [];
+
+    // Header judul
+    rows.push([`JADWAL KULIAH KELAS ${kelas} — PRODI ADMINISTRASI PERKANTORAN PNUP`]);
+    rows.push([`Semester Aktif Tahun Akademik ${new Date().getFullYear()}/${new Date().getFullYear()+1}`]);
+    rows.push([]);
+
+    // Header kolom
+    const headerRow = ['HARI'];
+    SLOTS_EXPORT.forEach(s => headerRow.push(s.istirahat ? 'ISTIRAHAT' : `Slot ${s.no}\n${s.mulai}-${s.selesai}`));
+    rows.push(headerRow);
+
+    // Data per hari
+    ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'].forEach(hari => {
+      const jadwalHari = jadwalKelas.filter(j => j.Hari === hari);
+      const row = [hari];
+      SLOTS_EXPORT.forEach(s => {
+        if (s.istirahat) { row.push('---'); return; }
+        const slot = jadwalHari.find(j => formatJam(j['Jam Mulai']) === s.mulai || formatJam(j['Jam Selesai']) === s.selesai ||
+          (formatJam(j['Jam Mulai']) <= s.mulai && formatJam(j['Jam Selesai']) >= s.selesai));
+        if (slot) row.push(`${slot['Nama Mata Kuliah']}\n${slot['Dosen Pengampu']||''}\n📍 ${slot.Ruangan||''}`);
+        else row.push('');
+      });
+      rows.push(row);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    // Styling lebar kolom
+    ws['!cols'] = [{ wch: 10 }, ...SLOTS_EXPORT.map(s => ({ wch: s.istirahat ? 8 : 20 }))];
+
+    // Merge judul
+    ws['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: SLOTS_EXPORT.length } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: SLOTS_EXPORT.length } },
+    ];
+
+    const sheetName = kelas.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 31);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  XLSX.writeFile(wb, `Jadwal_AP_${new Date().getFullYear()}.xlsx`);
+  showToast('✅ Excel berhasil didownload', 'success');
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = resolve;
+    s.onerror = reject;
+    document.head.appendChild(s);
+  });
 }
 
 // ================================================
