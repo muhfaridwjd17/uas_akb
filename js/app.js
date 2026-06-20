@@ -426,12 +426,13 @@ function renderMahasiswaTable() {
   wrap.innerHTML = `
     <div class="nilai-table-container">
       <table class="data-table data-table-center">
-        <thead><tr><th>NIM</th><th class="col-left">Nama</th><th>Angkatan</th><th>Status</th><th>Aksi</th></tr></thead>
+        <thead><tr><th>NIM</th><th class="col-left">Nama</th><th>Kelas</th><th>Angkatan</th><th>Status</th><th>Aksi</th></tr></thead>
         <tbody>
           ${filtered.map(m => `
             <tr>
               <td style="font-family:monospace;">${m.NIM}</td>
               <td class="col-left"><strong>${m.Nama}</strong></td>
+              <td><span style="background:var(--accent-subtle);color:var(--accent);padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700;border:1px solid var(--accent-border);">${m.Kelas||'-'}</span></td>
               <td>${m.Angkatan}</td>
               <td><span class="score-pill" style="color:${m.Status==='Aktif'?'var(--accent)':'var(--rose)'};">${m.Status}</span></td>
               <td>
@@ -451,6 +452,7 @@ function openMahasiswaModal(data) {
   document.getElementById('modal-mhs-title').textContent = data ? 'Edit Mahasiswa' : 'Tambah Mahasiswa';
   document.getElementById('mhs-nim').value = data ? data.NIM : '';
   document.getElementById('mhs-nama').value = data ? data.Nama : '';
+  document.getElementById('mhs-kelas').value = data ? data.Kelas : '';
   document.getElementById('mhs-angkatan').value = data ? data.Angkatan : '';
   document.getElementById('mhs-status').value = data ? data.Status : 'Aktif';
   document.getElementById('modal-mahasiswa').classList.add('open');
@@ -460,22 +462,23 @@ function closeMahasiswaModal() { document.getElementById('modal-mahasiswa').clas
 async function submitMahasiswa() {
   const nim = document.getElementById('mhs-nim').value.trim();
   const nama = document.getElementById('mhs-nama').value.trim();
+  const kelas = document.getElementById('mhs-kelas').value.trim();
   const angkatan = document.getElementById('mhs-angkatan').value.trim();
   const status = document.getElementById('mhs-status').value;
 
-  if (!nim || !nama || !angkatan) { showToast('⚠️ NIM, Nama, dan Angkatan wajib diisi', 'warning'); return; }
+  if (!nim || !nama || !kelas || !angkatan) { showToast('⚠️ NIM, Nama, Kelas, dan Angkatan wajib diisi', 'warning'); return; }
 
-  const payload = { nim, nama, angkatan, status };
+  const payload = { nim, nama, kelas, angkatan, status };
   if (STATE.editingId) {
     payload.id = STATE.editingId;
     await apiPost('editMahasiswa', payload);
     const idx = STATE.data.mahasiswa.findIndex(m => m.ID === STATE.editingId);
-    if (idx > -1) STATE.data.mahasiswa[idx] = { ...STATE.data.mahasiswa[idx], NIM: nim, Nama: nama, Angkatan: angkatan, Status: status };
+    if (idx > -1) STATE.data.mahasiswa[idx] = { ...STATE.data.mahasiswa[idx], NIM: nim, Nama: nama, Kelas: kelas, Angkatan: angkatan, Status: status };
     showToast('✅ Data mahasiswa berhasil diupdate', 'success');
   } else {
     const tempId = 'TEMP-' + Date.now();
     await apiPost('addMahasiswa', payload);
-    STATE.data.mahasiswa.push({ ID: tempId, NIM: nim, Nama: nama, Angkatan: angkatan, Status: status, 'Tanggal Daftar': new Date().toISOString() });
+    STATE.data.mahasiswa.push({ ID: tempId, NIM: nim, Nama: nama, Kelas: kelas, Angkatan: angkatan, Status: status, 'Tanggal Daftar': new Date().toISOString() });
     showToast('✅ Mahasiswa berhasil ditambahkan', 'success');
   }
   closeMahasiswaModal();
@@ -1463,9 +1466,16 @@ async function renderJadwalPage() {
             ${[...new Set(STATE.data.jadwal.map(j => j.Semester).filter(Boolean))].sort((a,b)=>Number(a)-Number(b)).map(s=>`<option value="${s}">Semester ${s}</option>`).join('')}
           </select>
         </div>
+        <div class="filter-group">
+          <label class="filter-label">👥 Filter Kelas</label>
+          <select id="jadwal-filter-kelas" class="filter-select" onchange="renderJadwalTable()">
+            <option value="all">— Semua Kelas —</option>
+            ${[...new Set(STATE.data.jadwal.map(j => j.Kelas).filter(Boolean))].sort().map(k=>`<option value="${k}">${k}</option>`).join('')}
+          </select>
+        </div>
         <div class="filter-group" style="flex:1;">
           <label class="filter-label">🔍 Cari</label>
-          <input type="text" id="jadwal-search" class="filter-input" placeholder="Cari mata kuliah, ruangan, dosen..." oninput="renderJadwalTable()">
+          <input type="text" id="jadwal-search" class="filter-input" placeholder="Cari mata kuliah, kelas, ruangan, dosen..." oninput="renderJadwalTable()">
         </div>
         <button class="btn btn-primary" onclick="openJadwalModal()">➕ Tambah Jadwal</button>
       </div>
@@ -1480,12 +1490,14 @@ function renderJadwalTable() {
   if (!wrap) return;
 
   const fSmt = document.getElementById('jadwal-filter-smt')?.value || 'all';
+  const fKelas = document.getElementById('jadwal-filter-kelas')?.value || 'all';
   const search = (document.getElementById('jadwal-search')?.value || '').toLowerCase();
 
   const filtered = STATE.data.jadwal.filter(j => {
     const matchSmt = fSmt === 'all' || String(j.Semester) === String(fSmt);
+    const matchKelas = fKelas === 'all' || j.Kelas === fKelas;
     const matchSearch = !search || Object.values(j).some(v => String(v).toLowerCase().includes(search));
-    return matchSmt && matchSearch;
+    return matchSmt && matchKelas && matchSearch;
   }).sort((a, b) => {
     const hariA = HARI_ORDER.indexOf(a.Hari), hariB = HARI_ORDER.indexOf(b.Hari);
     if (hariA !== hariB) return hariA - hariB;
@@ -1510,6 +1522,7 @@ function renderJadwalTable() {
             <th>Hari</th>
             <th>Jam</th>
             <th>Smt</th>
+            <th>Kelas</th>
             <th class="col-left">Mata Kuliah</th>
             <th>Ruangan</th>
             <th class="col-left">Dosen Pengampu</th>
@@ -1525,6 +1538,7 @@ function renderJadwalTable() {
               </td>
               <td style="font-family:monospace;font-size:12px;font-weight:700;">${j['Jam Mulai']} – ${j['Jam Selesai']}</td>
               <td>${j.Semester}</td>
+              <td><span style="background:var(--accent-subtle);color:var(--accent);padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700;border:1px solid var(--accent-border);">${j.Kelas||'-'}</span></td>
               <td class="col-left"><strong>${j['Nama Mata Kuliah']}</strong><br><span style="font-size:10px;color:var(--text-muted);">${j['Kode MK']||''}</span></td>
               <td><span style="background:var(--bg-glass);border:1px solid var(--border);padding:2px 9px;border-radius:6px;font-size:11px;">📍 ${j.Ruangan}</span></td>
               <td class="col-left">${j['Dosen Pengampu']||'-'}</td>
@@ -1560,6 +1574,7 @@ function openJadwalModal(data) {
   document.getElementById('jadwal-jam-mulai').value = data ? data['Jam Mulai'] : '';
   document.getElementById('jadwal-jam-selesai').value = data ? data['Jam Selesai'] : '';
   document.getElementById('jadwal-ruangan').value = data ? data.Ruangan : '';
+  document.getElementById('jadwal-kelas').value = data ? data.Kelas : '';
 
   // Auto-fill semester dari matkul jika tambah baru
   if (!data) {
@@ -1586,24 +1601,25 @@ async function submitJadwal() {
   const jamMulai = document.getElementById('jadwal-jam-mulai').value;
   const jamSelesai = document.getElementById('jadwal-jam-selesai').value;
   const ruangan = document.getElementById('jadwal-ruangan').value.trim();
+  const kelas = document.getElementById('jadwal-kelas').value.trim();
   const dosen = document.getElementById('jadwal-dosen').value;
 
-  if (!kodeMk || !hari || !semester || !jamMulai || !jamSelesai || !ruangan) {
+  if (!kodeMk || !hari || !semester || !jamMulai || !jamSelesai || !ruangan || !kelas) {
     showToast('⚠️ Semua field wajib kecuali Dosen harus diisi', 'warning'); return;
   }
 
-  const payload = { kodeMk, namaMatkul, hari, semester, jamMulai, jamSelesai, ruangan, dosenPengampu: dosen };
+  const payload = { kodeMk, namaMatkul, hari, semester, kelas, jamMulai, jamSelesai, ruangan, dosenPengampu: dosen };
 
   if (STATE.editingId) {
     payload.id = STATE.editingId;
     await apiPost('editJadwal', payload);
     const idx = STATE.data.jadwal.findIndex(j => j.ID === STATE.editingId);
-    if (idx > -1) STATE.data.jadwal[idx] = { ...STATE.data.jadwal[idx], 'Kode MK': kodeMk, 'Nama Mata Kuliah': namaMatkul, Hari: hari, Semester: semester, 'Jam Mulai': jamMulai, 'Jam Selesai': jamSelesai, Ruangan: ruangan, 'Dosen Pengampu': dosen };
+    if (idx > -1) STATE.data.jadwal[idx] = { ...STATE.data.jadwal[idx], 'Kode MK': kodeMk, 'Nama Mata Kuliah': namaMatkul, Hari: hari, Semester: semester, Kelas: kelas, 'Jam Mulai': jamMulai, 'Jam Selesai': jamSelesai, Ruangan: ruangan, 'Dosen Pengampu': dosen };
     showToast('✅ Jadwal berhasil diupdate', 'success');
   } else {
     const tempId = 'TEMP-' + Date.now();
     await apiPost('addJadwal', payload);
-    STATE.data.jadwal.push({ ID: tempId, 'Kode MK': kodeMk, 'Nama Mata Kuliah': namaMatkul, Hari: hari, Semester: semester, 'Jam Mulai': jamMulai, 'Jam Selesai': jamSelesai, Ruangan: ruangan, 'Dosen Pengampu': dosen });
+    STATE.data.jadwal.push({ ID: tempId, 'Kode MK': kodeMk, 'Nama Mata Kuliah': namaMatkul, Hari: hari, Semester: semester, Kelas: kelas, 'Jam Mulai': jamMulai, 'Jam Selesai': jamSelesai, Ruangan: ruangan, 'Dosen Pengampu': dosen });
     showToast('✅ Jadwal berhasil ditambahkan', 'success');
   }
 
