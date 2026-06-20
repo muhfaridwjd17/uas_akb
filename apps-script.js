@@ -11,6 +11,7 @@ const SHEET_DOSEN = 'Dosen';
 const SHEET_STAF = 'Staf';
 const SHEET_MATAKULIAH = 'MataKuliah';
 const SHEET_NILAI = 'Nilai';
+const SHEET_JADWAL = 'Jadwal';
 
 const HEADERS = {
   Mahasiswa: ['ID', 'NIM', 'Nama', 'Angkatan', 'Status', 'Tanggal Daftar'],
@@ -19,7 +20,8 @@ const HEADERS = {
   MataKuliah: ['ID', 'Kode', 'Nama Mata Kuliah', 'Semester', 'Dosen Pengampu', 'Tanggal Dibuat'],
   Nilai: ['ID', 'NIM Mahasiswa', 'Nama Mahasiswa', 'Kode MK', 'Nama Mata Kuliah', 'Semester',
           'Tugas', 'Praktik', 'UTS', 'UAS', 'Absen', 'Skor Mentah', 'Skor Normalisasi',
-          'Nilai Huruf', 'Bobot IP', 'Tanggal Input']
+          'Nilai Huruf', 'Bobot IP', 'Tanggal Input'],
+  Jadwal: ['ID', 'Kode MK', 'Nama Mata Kuliah', 'Hari', 'Semester', 'Jam Mulai', 'Jam Selesai', 'Ruangan', 'Dosen Pengampu', 'Tanggal Dibuat']
 };
 
 // ---- BOBOT KOMPONEN NILAI ----
@@ -91,6 +93,7 @@ function doGet(e) {
     if (action === 'getStaf') return handleGetList(SHEET_STAF);
     if (action === 'getMataKuliah') return handleGetList(SHEET_MATAKULIAH);
     if (action === 'getNilai') return handleGetList(SHEET_NILAI);
+    if (action === 'getJadwal') return handleGetList(SHEET_JADWAL);
     if (action === 'getRapor' && e.parameter.nim) return handleGetRapor(e.parameter.nim);
     return jsonOutput({ status: 'ok', message: 'AkademikAP API aktif' });
   } catch (err) {
@@ -123,6 +126,10 @@ function doPost(e) {
     if (action === 'editNilai') return handleEditNilai(data);
     if (action === 'deleteNilai') return handleDelete(SHEET_NILAI, data.id);
 
+    if (action === 'addJadwal') return handleAdd(SHEET_JADWAL, buildJadwalRow(data));
+    if (action === 'editJadwal') return handleEdit(SHEET_JADWAL, data.id, buildJadwalRow(data, data.id));
+    if (action === 'deleteJadwal') return handleDelete(SHEET_JADWAL, data.id);
+
     return jsonOutput({ status: 'error', message: 'Action tidak dikenali: ' + action });
   } catch (err) {
     return jsonOutput({ status: 'error', message: err.toString() });
@@ -150,6 +157,12 @@ function buildStafRow(data, existingId) {
 function buildMataKuliahRow(data, existingId) {
   const id = existingId || generateId('MK');
   return [id, data.kode || '', data.namaMatkul || '', data.semester || '', data.dosenPengampu || '',
+          existingId ? null : new Date().toISOString()];
+}
+function buildJadwalRow(data, existingId) {
+  const id = existingId || generateId('JDW');
+  return [id, data.kodeMk || '', data.namaMatkul || '', data.hari || '', data.semester || '',
+          data.jamMulai || '', data.jamSelesai || '', data.ruangan || '', data.dosenPengampu || '',
           existingId ? null : new Date().toISOString()];
 }
 
@@ -316,7 +329,8 @@ function handleGetAll() {
       dosen: sheetToObjects(getOrCreateSheet(SHEET_DOSEN)),
       staf: sheetToObjects(getOrCreateSheet(SHEET_STAF)),
       mataKuliah: sheetToObjects(getOrCreateSheet(SHEET_MATAKULIAH)),
-      nilai: sheetToObjects(getOrCreateSheet(SHEET_NILAI))
+      nilai: sheetToObjects(getOrCreateSheet(SHEET_NILAI)),
+      jadwal: sheetToObjects(getOrCreateSheet(SHEET_JADWAL))
     }
   });
 }
