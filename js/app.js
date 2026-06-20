@@ -168,30 +168,22 @@ async function apiGet(action, extraParams) {
 async function apiPost(action, payload) {
   if (!APPS_SCRIPT_URL) { showToast('⚠️ APPS_SCRIPT_URL belum diisi di data/config.js', 'error'); return null; }
   try {
-    // Encode payload sebagai base64 dan kirim via GET (lebih andal dari POST no-cors)
-    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ action, ...payload }))));
-    const url = `${APPS_SCRIPT_URL}?_method=POST&_data=${encodeURIComponent(encoded)}`;
+    // Kirim sebagai JSON string dalam parameter URL (hindari base64)
+    const jsonStr = JSON.stringify({ action, ...payload });
+    const url = `${APPS_SCRIPT_URL}?_method=POST&_json=${encodeURIComponent(jsonStr)}`;
     const res = await fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(15000) });
     const text = await res.text();
     if (text) {
-      const json = JSON.parse(text);
-      if (json.status === 'error') { showToast('❌ ' + json.message, 'error'); return null; }
-      return json;
+      try {
+        const json = JSON.parse(text);
+        if (json.status === 'error') { showToast('❌ ' + json.message, 'error'); return null; }
+        return json;
+      } catch(e) { return { status: 'success' }; }
     }
     return { status: 'success' };
   } catch (e) {
-    // Fallback: coba POST no-cors
-    try {
-      await fetch(APPS_SCRIPT_URL, {
-        method: 'POST', mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain' },
-        body: JSON.stringify({ action, ...payload })
-      });
-      return { status: 'success' };
-    } catch(e2) {
-      showToast('❌ Gagal mengirim data ke server', 'error');
-      return null;
-    }
+    showToast('❌ Gagal mengirim data ke server', 'error');
+    return null;
   }
 }
 
