@@ -758,13 +758,14 @@ function renderMatkulTable() {
   wrap.innerHTML = `
     <div class="nilai-table-container">
       <table class="data-table data-table-center">
-        <thead><tr><th>Kode</th><th class="col-left">Nama Mata Kuliah</th><th>Semester</th><th class="col-left">Dosen Pengampu</th><th>Aksi</th></tr></thead>
+        <thead><tr><th>Kode</th><th class="col-left">Nama Mata Kuliah</th><th>Semester</th><th>Kelas</th><th class="col-left">Dosen Pengampu</th><th>Aksi</th></tr></thead>
         <tbody>
           ${filtered.map(m => `
             <tr>
               <td style="font-family:monospace;">${m.Kode}</td>
               <td class="col-left"><strong>${m['Nama Mata Kuliah']}</strong></td>
               <td>${m.Semester}</td>
+              <td>${m['Kelas'] ? String(m['Kelas']).split(',').map(k => `<span style="background:var(--accent-subtle);color:var(--accent);padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid var(--accent-border);margin:1px;display:inline-block;">${k.trim()}</span>`).join('') : '-'}</td>
               <td class="col-left">${m['Dosen Pengampu']||'-'}</td>
               <td>
                 <div style="display:flex; gap:6px; justify-content:center;">
@@ -785,17 +786,36 @@ function openMatkulModal(data) {
   document.getElementById('mk-nama').value = data ? data['Nama Mata Kuliah'] : '';
   document.getElementById('mk-semester').value = data ? data.Semester : '';
 
+  // Isi daftar dosen dengan checkbox
   const dosenList = document.getElementById('mk-dosen-list');
   const selectedDosen = data ? String(data['Dosen Pengampu']||'').split(',').map(d => d.trim()).filter(Boolean) : [];
   if (dosenList) {
     if (STATE.data.dosen.length === 0) {
-      dosenList.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px;">Belum ada data dosen — tambahkan dosen terlebih dahulu</div>';
+      dosenList.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px;">Belum ada data dosen</div>';
     } else {
       dosenList.innerHTML = STATE.data.dosen.map(d => `
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background 0.15s;" onmouseover="this.style.background='var(--bg-glass)'" onmouseout="this.style.background='transparent'">
           <input type="checkbox" value="${d.Nama}" ${selectedDosen.includes(d.Nama) ? 'checked' : ''}
             style="width:15px;height:15px;accent-color:var(--accent);cursor:pointer;">
           <span style="font-size:12px;color:var(--text-primary);">${d.Nama}</span>
+        </label>`).join('');
+    }
+  }
+
+  // Isi daftar kelas dengan checkbox (dari data mahasiswa yang ada)
+  const kelasList = document.getElementById('mk-kelas-list');
+  const selectedKelas = data ? String(data['Kelas']||'').split(',').map(k => k.trim()).filter(Boolean) : [];
+  const allKelas = [...new Set(STATE.data.mahasiswa.map(m => m.Kelas).filter(Boolean))].sort();
+  if (kelasList) {
+    if (allKelas.length === 0) {
+      kelasList.innerHTML = '<div style="font-size:12px;color:var(--text-muted);padding:4px;">Belum ada data kelas</div>';
+    } else {
+      kelasList.innerHTML = allKelas.map(k => `
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:5px 10px;border-radius:8px;border:1.5px solid ${selectedKelas.includes(k) ? 'var(--accent)' : 'var(--border)'};background:${selectedKelas.includes(k) ? 'var(--accent-subtle)' : 'var(--bg-glass)'};transition:all 0.15s;">
+          <input type="checkbox" value="${k}" ${selectedKelas.includes(k) ? 'checked' : ''}
+            style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;"
+            onchange="this.parentElement.style.borderColor=this.checked?'var(--accent)':'var(--border)';this.parentElement.style.background=this.checked?'var(--accent-subtle)':'var(--bg-glass)'">
+          <span style="font-size:12px;font-weight:700;color:var(--accent);">${k}</span>
         </label>`).join('');
     }
   }
@@ -813,20 +833,22 @@ async function submitMatkul() {
   const semester = document.getElementById('mk-semester').value.trim();
   const dosenChecked = [...document.querySelectorAll('#mk-dosen-list input[type="checkbox"]:checked')].map(cb => cb.value);
   const dosenPengampu = dosenChecked.join(', ');
+  const kelasChecked = [...document.querySelectorAll('#mk-kelas-list input[type="checkbox"]:checked')].map(cb => cb.value);
+  const kelas = kelasChecked.join(', ');
 
   if (!kode || !namaMatkul || !semester) { showToast('⚠️ Kode, Nama, dan Semester wajib diisi', 'warning'); return; }
 
-  const payload = { kode, namaMatkul, semester, dosenPengampu };
+  const payload = { kode, namaMatkul, semester, kelas, dosenPengampu };
   if (STATE.editingId) {
     payload.id = STATE.editingId;
     await apiPost('editMataKuliah', payload);
     const idx = STATE.data.mataKuliah.findIndex(m => m.ID === STATE.editingId);
-    if (idx > -1) STATE.data.mataKuliah[idx] = { ...STATE.data.mataKuliah[idx], Kode: kode, 'Nama Mata Kuliah': namaMatkul, Semester: semester, 'Dosen Pengampu': dosenPengampu };
+    if (idx > -1) STATE.data.mataKuliah[idx] = { ...STATE.data.mataKuliah[idx], Kode: kode, 'Nama Mata Kuliah': namaMatkul, Semester: semester, Kelas: kelas, 'Dosen Pengampu': dosenPengampu };
     showToast('✅ Data mata kuliah berhasil diupdate', 'success');
   } else {
     const tempId = 'TEMP-' + Date.now();
     await apiPost('addMataKuliah', payload);
-    STATE.data.mataKuliah.push({ ID: tempId, Kode: kode, 'Nama Mata Kuliah': namaMatkul, Semester: semester, 'Dosen Pengampu': dosenPengampu, 'Tanggal Dibuat': new Date().toISOString() });
+    STATE.data.mataKuliah.push({ ID: tempId, Kode: kode, 'Nama Mata Kuliah': namaMatkul, Semester: semester, Kelas: kelas, 'Dosen Pengampu': dosenPengampu, 'Tanggal Dibuat': new Date().toISOString() });
     showToast('✅ Mata kuliah berhasil ditambahkan', 'success');
   }
   closeMatkulModal();
