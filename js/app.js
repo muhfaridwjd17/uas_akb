@@ -1882,7 +1882,7 @@ async function renderJadwalPublik() {
                   }
                   if (rendered[i] === null) return `<td style="padding:4px;border:1.5px solid var(--border);"></td>`;
                   const { jadwal: j, span } = rendered[i];
-                  return `<td colspan="${span}" style="padding:8px;border:1.5px solid var(--border);background:${warna}12;vertical-align:top;">
+                  return `<td colspan="${span}" style="padding:8px;border:1.5px solid var(--border);background:${warna}12;vertical-align:top;text-align:center;">
                     <div style="font-weight:800;font-size:11px;color:var(--text-primary);margin-bottom:3px;line-height:1.3;">${j['Nama Mata Kuliah']}</div>
                     <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">${j['Dosen Pengampu']||''}</div>
                     <div style="font-size:10px;font-weight:700;color:${warna};">📍 ${j.Ruangan||''}</div>
