@@ -2233,41 +2233,48 @@ function drawStatusKuliah() {
       <button class="btn btn-ghost btn-sm" onclick="resetSemuaStatusRuangan()">🔄 Reset Semua ke Kosong</button>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
       ${semuaRuangan.map(ruangan => {
         const data = STATUS_KULIAH_DATA[ruangan] || {};
         const isTerpakai = data.status === 'Sedang Dipakai';
         const isOwner = isTerpakai && data.diklikkOleh === KETUA_SESSION.nama;
         const isLocked = isTerpakai && !isOwner;
-        const borderColor = isLocked ? '#F59E0B' : isTerpakai ? '#10B981' : 'var(--border)';
-        const bgColor = isLocked ? 'rgba(245,158,11,0.05)' : isTerpakai ? 'rgba(16,185,129,0.06)' : 'var(--bg-surface)';
-        const dotColor = isLocked ? '#F59E0B' : isTerpakai ? '#10B981' : 'var(--text-muted)';
 
-        return `<div style="border-radius:14px;padding:16px;border:2px solid ${borderColor};background:${bgColor};transition:all 0.2s;">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:8px;">
-            <div style="flex:1;">
-              <div style="font-weight:900;font-size:15px;color:var(--text-primary);">📍 ${ruangan}</div>
-              ${isTerpakai ? `
-                <div style="font-size:10px;color:${dotColor};font-weight:700;margin-top:3px;">${data.kelas||''} ${data.mataKuliah ? '· '+data.mataKuliah : ''}</div>
-                <div style="font-size:9px;color:var(--text-muted);margin-top:1px;">Oleh: <strong>${data.diklikkOleh||'-'}</strong> · ${data.waktuUpdate||''}</div>
-              ` : '<div style="font-size:11px;color:var(--text-muted);margin-top:3px;">Ruangan kosong / tersedia</div>'}
+        const borderColor = isLocked ? 'rgba(245,158,11,0.5)' : isTerpakai ? 'rgba(16,185,129,0.5)' : 'var(--border)';
+        const topBarColor = isLocked ? '#F59E0B' : isTerpakai ? '#10B981' : 'transparent';
+        const statusIcon = isLocked ? '🔒' : isTerpakai ? '🔴' : '🟢';
+        const statusText = isLocked ? 'Dikunci' : isTerpakai ? 'Sedang Dipakai' : 'Kosong';
+        const statusColor = isLocked ? '#F59E0B' : isTerpakai ? '#10B981' : 'var(--text-muted)';
+
+        return `<div style="border-radius:16px;border:1.5px solid ${borderColor};background:var(--bg-surface);overflow:hidden;transition:all 0.2s;">
+          <div style="height:4px;background:${topBarColor};"></div>
+          <div style="padding:16px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:900;font-size:14px;color:var(--text-primary);">📍 ${ruangan}</div>
+              <span style="width:9px;height:9px;border-radius:50%;background:${statusColor};flex-shrink:0;${isTerpakai && !isLocked ? 'box-shadow:0 0 0 3px rgba(16,185,129,0.2);' : ''}"></span>
             </div>
-            <div style="width:12px;height:12px;border-radius:50%;flex-shrink:0;background:${dotColor};${isTerpakai ? 'box-shadow:0 0 8px '+dotColor+';' : ''}"></div>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border);">
-            <span style="font-size:11px;font-weight:700;color:${dotColor};">
-              ${isLocked ? '🔒 Dikunci' : isTerpakai ? '🔴 Dipakai (Kamu)' : '🟢 Kosong'}
-            </span>
-            ${isLocked
-              ? `<span style="padding:5px 12px;border-radius:8px;font-size:10px;font-weight:700;background:rgba(245,158,11,0.1);border:1.5px solid #F59E0B;color:#F59E0B;">🔒 Terkunci</span>`
-              : `<button onclick="toggleStatusRuangan('${ruangan}', ${isTerpakai})"
-                  style="padding:5px 14px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
-                    background:${isTerpakai ? 'rgba(244,63,94,0.12)' : 'rgba(16,185,129,0.12)'};
-                    border:1.5px solid ${isTerpakai ? '#F43F5E' : '#10B981'};
-                    color:${isTerpakai ? '#F43F5E' : '#10B981'};">
-                  ${isTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
-                </button>`
+            ${isTerpakai ? `
+              <div style="background:${isLocked ? 'rgba(245,158,11,0.08)' : 'rgba(16,185,129,0.08)'};border-radius:8px;padding:8px 10px;margin-bottom:12px;">
+                <div style="font-size:10px;font-weight:700;color:${statusColor};margin-bottom:2px;">${data.kelas||''}</div>
+                <div style="font-size:10px;color:var(--text-muted);">Oleh: <strong>${data.diklikkOleh||'-'}</strong></div>
+                <div style="font-size:9px;color:var(--text-muted);margin-top:1px;">${data.waktuUpdate||''}</div>
+              </div>` :
+              `<div style="font-size:11px;color:var(--text-muted);margin-bottom:12px;">Tersedia untuk digunakan</div>`
             }
+            <div style="display:flex;align-items:center;justify-content:space-between;">
+              <span style="font-size:11px;font-weight:700;color:${statusColor};">${statusIcon} ${statusText}</span>
+              ${isLocked
+                ? `<span style="padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#F59E0B;">Terkunci</span>`
+                : `<button onclick="toggleStatusRuangan('${ruangan}', ${isTerpakai})"
+                    style="padding:5px 14px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.15s;
+                      background:${isTerpakai ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)'};
+                      border:1.5px solid ${isTerpakai ? 'rgba(244,63,94,0.4)' : 'rgba(16,185,129,0.4)'};
+                      color:${isTerpakai ? '#F43F5E' : '#10B981'};"
+                    onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                    ${isTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
+                  </button>`
+              }
+            </div>
           </div>
         </div>`;
       }).join('')}
