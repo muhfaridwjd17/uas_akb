@@ -143,12 +143,11 @@ async function apiGet(action, extraParams) {
   let url = `${APPS_SCRIPT_URL}?action=${action}`;
   if (extraParams) url += '&' + extraParams;
 
-  // Coba langsung dulu (Apps Script sudah support CORS untuk GET)
   const attempts = [
-    () => fetch(url, { signal: AbortSignal.timeout(12000) }),
-    () => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) }),
-    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) }),
-    () => fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: AbortSignal.timeout(10000) })
+    () => fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(15000) }),
+    () => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(12000) }),
+    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(12000) }),
+    () => fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: AbortSignal.timeout(12000) })
   ];
 
   for (const attempt of attempts) {
@@ -1818,7 +1817,7 @@ async function loadStatusKuliah() {
   const today = getTodayString();
   const url = `${APPS_SCRIPT_URL}?action=getStatusKuliah&tanggal=${today}`;
   const attempts = [
-    () => fetch(url, { signal: AbortSignal.timeout(10000) }),
+    () => fetch(url, { redirect: 'follow', signal: AbortSignal.timeout(12000) }),
     () => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) }),
     () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) })
   ];
@@ -1970,7 +1969,7 @@ async function loginKetua() {
   showToast('⏳ Memeriksa akun...', 'info');
   const url = `${APPS_SCRIPT_URL}?action=loginKetua&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { redirect: 'follow' });
     const json = await res.json();
     if (json.status === 'success') {
       KETUA_SESSION = json.data;
