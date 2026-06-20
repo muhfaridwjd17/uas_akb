@@ -1608,8 +1608,8 @@ function openJadwalModal(data) {
 
   document.getElementById('jadwal-hari').value = data ? data.Hari : '';
   document.getElementById('jadwal-semester').value = data ? data.Semester : '';
-  document.getElementById('jadwal-jam-mulai').value = data ? data['Jam Mulai'] : '';
-  document.getElementById('jadwal-jam-selesai').value = data ? data['Jam Selesai'] : '';
+  document.getElementById('jadwal-jam-mulai').value = data ? formatJam(data['Jam Mulai']) : '';
+  document.getElementById('jadwal-jam-selesai').value = data ? formatJam(data['Jam Selesai']) : '';
   document.getElementById('jadwal-ruangan').value = data ? data.Ruangan : '';
   document.getElementById('jadwal-kelas').value = data ? data.Kelas : '';
 
@@ -1636,8 +1636,8 @@ async function submitJadwal() {
   const namaMatkul = namaMatkulOpt ? namaMatkulOpt.dataset.nama : '';
   const hari = document.getElementById('jadwal-hari').value;
   const semester = document.getElementById('jadwal-semester').value;
-  const jamMulai = document.getElementById('jadwal-jam-mulai').value;
-  const jamSelesai = document.getElementById('jadwal-jam-selesai').value;
+  const jamMulai = (document.getElementById('jadwal-jam-mulai').value || '').substring(0, 5);
+  const jamSelesai = (document.getElementById('jadwal-jam-selesai').value || '').substring(0, 5);
   const ruangan = document.getElementById('jadwal-ruangan').value.trim();
   const kelas = document.getElementById('jadwal-kelas').value.trim();
   const dosen = document.getElementById('jadwal-dosen').value;
