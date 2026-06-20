@@ -14,7 +14,7 @@ const SHEET_NILAI = 'Nilai';
 const SHEET_JADWAL = 'Jadwal';
 
 const HEADERS = {
-  Mahasiswa: ['ID', 'NIM', 'Nama', 'Angkatan', 'Status', 'Tanggal Daftar'],
+  Mahasiswa: ['ID', 'NIM', 'Nama', 'Kelas', 'Angkatan', 'Status', 'Tanggal Daftar'],
   Dosen: ['ID', 'NIDN', 'Nama', 'Jabatan', 'Tanggal Daftar'],
   Staf: ['ID', 'Nama', 'Jabatan', 'Tanggal Daftar'],
   MataKuliah: ['ID', 'Kode', 'Nama Mata Kuliah', 'Semester', 'Dosen Pengampu', 'Tanggal Dibuat'],
@@ -141,7 +141,7 @@ function doPost(e) {
 // ================================================
 function buildMahasiswaRow(data, existingId) {
   const id = existingId || generateId('MHS');
-  return [id, data.nim || '', data.nama || '', data.angkatan || '', data.status || 'Aktif',
+  return [id, data.nim || '', data.nama || '', data.kelas || '', data.angkatan || '', data.status || 'Aktif',
           existingId ? null : new Date().toISOString()];
 }
 function buildDosenRow(data, existingId) {
