@@ -457,7 +457,10 @@ function openMahasiswaModal(data) {
   document.getElementById('mhs-status').value = data ? data.Status : 'Aktif';
   document.getElementById('modal-mahasiswa').classList.add('open');
 }
-function closeMahasiswaModal() { document.getElementById('modal-mahasiswa').classList.remove('open'); }
+function closeMahasiswaModal() {
+  document.getElementById('modal-mahasiswa').classList.remove('open');
+  STATE.editingId = null;
+}
 
 async function submitMahasiswa() {
   const nim = document.getElementById('mhs-nim').value.trim();
@@ -560,7 +563,10 @@ function openDosenModal(data) {
   document.getElementById('dsn-jabatan').value = data ? data.Jabatan : '';
   document.getElementById('modal-dosen').classList.add('open');
 }
-function closeDosenModal() { document.getElementById('modal-dosen').classList.remove('open'); }
+function closeDosenModal() {
+  document.getElementById('modal-dosen').classList.remove('open');
+  STATE.editingId = null;
+}
 
 async function submitDosen() {
   const nidn = document.getElementById('dsn-nidn').value.trim();
@@ -659,7 +665,10 @@ function openStafModal(data) {
   document.getElementById('stf-jabatan').value = data ? data.Jabatan : '';
   document.getElementById('modal-staf').classList.add('open');
 }
-function closeStafModal() { document.getElementById('modal-staf').classList.remove('open'); }
+function closeStafModal() {
+  document.getElementById('modal-staf').classList.remove('open');
+  STATE.editingId = null;
+}
 
 async function submitStaf() {
   const nama = document.getElementById('stf-nama').value.trim();
@@ -765,7 +774,10 @@ function openMatkulModal(data) {
 
   document.getElementById('modal-matkul').classList.add('open');
 }
-function closeMatkulModal() { document.getElementById('modal-matkul').classList.remove('open'); }
+function closeMatkulModal() {
+  document.getElementById('modal-matkul').classList.remove('open');
+  STATE.editingId = null;
+}
 
 async function submitMatkul() {
   const kode = document.getElementById('mk-kode').value.trim();
@@ -1589,6 +1601,7 @@ function openJadwalModal(data) {
 
 function closeJadwalModal() {
   document.getElementById('modal-jadwal').classList.remove('open');
+  STATE.editingId = null;
 }
 
 async function submitJadwal() {
