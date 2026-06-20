@@ -1754,10 +1754,49 @@ async function renderJadwalPublik() {
     return;
   }
 
-  const hariWarna = { Senin:'#34D399',Selasa:'#22D3EE',Rabu:'#818CF8',Kamis:'#D4AF37',Jumat:'#F43F5E',Sabtu:'#F97316' };
+  // Definisi slot jam standar PNUP
+  const SLOTS = [
+    { no: '1',  mulai: '07:30', selesai: '08:20' },
+    { no: '2',  mulai: '08:20', selesai: '09:10' },
+    { no: '3',  mulai: '09:10', selesai: '10:00' },
+    { no: 'IST', mulai: '10:00', selesai: '10:20', istirahat: true },
+    { no: '4',  mulai: '10:20', selesai: '11:10' },
+    { no: '5',  mulai: '11:10', selesai: '12:00' },
+    { no: 'IST', mulai: '12:00', selesai: '13:00', istirahat: true },
+    { no: '6',  mulai: '13:00', selesai: '13:50' },
+    { no: '7',  mulai: '13:50', selesai: '14:40' },
+    { no: '8',  mulai: '14:40', selesai: '15:30' },
+    { no: 'IST', mulai: '15:30', selesai: '16:00', istirahat: true },
+    { no: '9',  mulai: '16:00', selesai: '16:50' },
+    { no: '10', mulai: '16:50', selesai: '17:40' },
+  ];
 
-  // Ambil semua kelas unik
+  const hariWarna = { Senin:'#34D399',Selasa:'#22D3EE',Rabu:'#818CF8',Kamis:'#D4AF37',Jumat:'#F43F5E',Sabtu:'#F97316' };
   const kelasList = [...new Set(filtered.map(j => j.Kelas).filter(Boolean))].sort();
+
+  // Fungsi cari slot yang dipakai jadwal berdasarkan jam mulai-selesai
+  function getSlotRange(jamMulai, jamSelesai) {
+    const mulai = formatJam(jamMulai);
+    const selesai = formatJam(jamSelesai);
+    let startIdx = -1, endIdx = -1;
+    SLOTS.forEach((s, i) => {
+      if (!s.istirahat) {
+        if (s.mulai === mulai) startIdx = i;
+        if (s.selesai === selesai) endIdx = i;
+      }
+    });
+    // Fallback: cari slot terdekat
+    if (startIdx === -1) {
+      SLOTS.forEach((s, i) => { if (!s.istirahat && s.mulai <= mulai && startIdx === -1) startIdx = i; });
+    }
+    if (endIdx === -1) {
+      for (let i = SLOTS.length - 1; i >= 0; i--) {
+        if (!s.istirahat && SLOTS[i].selesai >= selesai) { endIdx = i; break; }
+      }
+      if (endIdx === -1) endIdx = startIdx;
+    }
+    return { startIdx, endIdx };
+  }
 
   let html = `
     <div style="overflow-x:auto;">
@@ -1768,18 +1807,8 @@ async function renderJadwalPublik() {
         <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Semester Aktif Tahun Akademik ${new Date().getFullYear()}/${new Date().getFullYear()+1}</div>
       </div>`;
 
-  // Satu tabel per kelas
   kelasList.forEach(kelas => {
     const jadwalKelas = filtered.filter(j => j.Kelas === kelas);
-
-    // Kumpulkan semua slot jam unik untuk kelas ini, format HH:MM
-    const slotSet = new Set();
-    jadwalKelas.forEach(j => {
-      const mulai = formatJam(j['Jam Mulai']);
-      const selesai = formatJam(j['Jam Selesai']);
-      if (mulai && selesai) slotSet.add(`${mulai}–${selesai}`);
-    });
-    const slotJam = [...slotSet].sort();
 
     html += `
       <div style="margin-bottom:40px;">
@@ -1787,35 +1816,56 @@ async function renderJadwalPublik() {
           🎓 Kelas: ${kelas}
         </div>
         <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:500px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;">
           <thead>
             <tr>
-              <th style="padding:10px 14px;text-align:left;border:1.5px solid var(--border);font-size:11px;font-weight:800;letter-spacing:1px;background:var(--bg-elevated);min-width:90px;">HARI</th>
-              ${slotJam.map(jam => `
-                <th style="padding:10px 8px;text-align:center;border:1.5px solid var(--border);font-size:10px;font-weight:800;background:var(--bg-elevated);white-space:nowrap;">
-                  ${jam}
-                </th>`).join('')}
+              <th style="padding:8px 12px;text-align:left;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:11px;font-weight:800;min-width:80px;">HARI</th>
+              ${SLOTS.map(s => s.istirahat ?
+                `<th style="padding:6px 4px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:9px;font-weight:700;color:var(--text-muted);min-width:50px;">IST<br><span style="font-size:8px;font-weight:400;">${s.mulai}<br>${s.selesai}</span></th>` :
+                `<th style="padding:6px 8px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:11px;font-weight:800;min-width:80px;">${s.no}<br><span style="font-size:8px;font-weight:400;color:var(--text-muted);">${s.mulai}<br>${s.selesai}</span></th>`
+              ).join('')}
             </tr>
           </thead>
           <tbody>
             ${HARI_LIST.map(hari => {
               const jadwalHari = jadwalKelas.filter(j => j.Hari === hari);
               const warna = hariWarna[hari] || 'var(--accent)';
-              const adaJadwal = jadwalHari.length > 0;
+
+              // Build sel per slot — tandai slot mana yang sudah dipakai (colspan)
+              const rendered = new Array(SLOTS.length).fill(null);
+              jadwalHari.forEach(j => {
+                const mulai = formatJam(j['Jam Mulai']);
+                const selesai = formatJam(j['Jam Selesai']);
+                let startIdx = -1, endIdx = -1;
+                SLOTS.forEach((s, i) => {
+                  if (!s.istirahat) {
+                    if (s.mulai === mulai && startIdx === -1) startIdx = i;
+                    if (s.selesai === selesai) endIdx = i;
+                  }
+                });
+                if (startIdx === -1) startIdx = 0;
+                if (endIdx === -1 || endIdx < startIdx) endIdx = startIdx;
+                // Hitung colspan (termasuk slot istirahat di antara)
+                const span = endIdx - startIdx + 1;
+                rendered[startIdx] = { jadwal: j, span, warna };
+                for (let x = startIdx + 1; x <= endIdx; x++) rendered[x] = 'skip';
+              });
 
               return `<tr>
-                <td style="padding:10px 14px;border:1.5px solid var(--border);font-weight:800;color:${warna};background:${warna}10;white-space:nowrap;">${hari}</td>
-                ${slotJam.map(jam => {
-                  const [mulai, selesai] = jam.split('–');
-                  const slot = jadwalHari.find(j => formatJam(j['Jam Mulai']) === mulai && formatJam(j['Jam Selesai']) === selesai);
-                  if (slot) {
-                    return `<td style="padding:8px 10px;border:1.5px solid var(--border);background:${warna}12;vertical-align:top;min-width:120px;">
-                      <div style="font-weight:800;font-size:11px;color:var(--text-primary);margin-bottom:4px;line-height:1.3;">${slot['Nama Mata Kuliah']}</div>
-                      <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">${slot['Dosen Pengampu']||''}</div>
-                      <div style="font-size:10px;font-weight:700;color:${warna};">📍 ${slot.Ruangan||''}</div>
-                    </td>`;
+                <td style="padding:8px 12px;border:1.5px solid var(--border);font-weight:800;color:${warna};background:${warna}10;white-space:nowrap;">${hari}</td>
+                ${SLOTS.map((s, i) => {
+                  if (s.istirahat) {
+                    if (rendered[i] === 'skip') return '';
+                    return `<td style="padding:4px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;"><span style="font-size:9px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
                   }
-                  return `<td style="padding:8px;border:1.5px solid var(--border);"></td>`;
+                  if (rendered[i] === 'skip') return '';
+                  if (rendered[i] === null) return `<td style="padding:4px;border:1.5px solid var(--border);"></td>`;
+                  const { jadwal: j, span } = rendered[i];
+                  return `<td colspan="${span}" style="padding:8px;border:1.5px solid var(--border);background:${warna}12;vertical-align:top;">
+                    <div style="font-weight:800;font-size:11px;color:var(--text-primary);margin-bottom:3px;line-height:1.3;">${j['Nama Mata Kuliah']}</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-bottom:2px;">${j['Dosen Pengampu']||''}</div>
+                    <div style="font-size:10px;font-weight:700;color:${warna};">📍 ${j.Ruangan||''}</div>
+                  </td>`;
                 }).join('')}
               </tr>`;
             }).join('')}
