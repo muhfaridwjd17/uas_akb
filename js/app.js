@@ -122,7 +122,7 @@ function handleChangePassword(e) {
 // ---- STATE ----
 const STATE = {
   currentPage: 'dashboard',
-  data: { mahasiswa: [], dosen: [], staf: [], mataKuliah: [], nilai: [], jadwal: [] },
+  data: { mahasiswa: [], dosen: [], staf: [], mataKuliah: [], nilai: [], jadwal: [], akunKetua: [] },
   loaded: false,
   editingId: null,
   raporCache: {},
@@ -189,6 +189,7 @@ async function loadAllData(force) {
     STATE.data.mataKuliah = result.data.mataKuliah || [];
     STATE.data.nilai = result.data.nilai || [];
     STATE.data.jadwal = result.data.jadwal || [];
+    STATE.data.akunKetua = result.data.akunKetua || [];
     STATE.loaded = true;
   }
 }
@@ -210,6 +211,9 @@ function navigate(page) {
   if (page === 'nilai') renderNilaiPage();
   if (page === 'rapor') renderRaporPage();
   if (page === 'jadwal') renderJadwalPage();
+  if (page === 'jadwal-publik') renderJadwalPublik();
+  if (page === 'status-kuliah') renderStatusKuliah();
+  if (page === 'akun-ketua') renderAkunKetuaPage();
 
   document.getElementById('sidebar')?.classList.remove('open');
   document.getElementById('sidebar-overlay')?.classList.remove('open');
@@ -1649,6 +1653,441 @@ async function hapusJadwal(id) {
   STATE.data.jadwal = STATE.data.jadwal.filter(j => j.ID !== id);
   showToast('🗑️ Jadwal berhasil dihapus', 'warning');
   renderJadwalTable();
+}
+
+// ================================================
+// JADWAL PUBLIK — TAMPILAN GRID SEPERTI PINTU RUANGAN
+// ================================================
+const HARI_LIST = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+const JAM_SLOTS = ['07:00','07:50','08:40','09:30','10:20','11:10','12:00','13:00','13:50','14:40','15:30','16:20'];
+
+async function renderJadwalPublik() {
+  updateTopbar('Jadwal Ruangan', 'Jadwal Penggunaan Ruangan — Prodi Administrasi Perkantoran PNUP');
+  await loadAllData();
+
+  const container = document.getElementById('jadwal-publik-content');
+  if (!container) return;
+
+  const jadwal = STATE.data.jadwal;
+
+  // Isi filter dropdown
+  const ruanganEl = document.getElementById('jadwal-publik-filter-ruangan');
+  const kelasEl = document.getElementById('jadwal-publik-filter-kelas');
+  if (ruanganEl && ruanganEl.options.length <= 1) {
+    [...new Set(jadwal.map(j => j.Ruangan).filter(Boolean))].sort().forEach(r => {
+      ruanganEl.innerHTML += `<option value="${r}">${r}</option>`;
+    });
+  }
+  if (kelasEl && kelasEl.options.length <= 1) {
+    [...new Set(jadwal.map(j => j.Kelas).filter(Boolean))].sort().forEach(k => {
+      kelasEl.innerHTML += `<option value="${k}">${k}</option>`;
+    });
+  }
+
+  const fRuangan = ruanganEl?.value || 'all';
+  const fKelas = kelasEl?.value || 'all';
+  const filtered = jadwal.filter(j =>
+    (fRuangan === 'all' || j.Ruangan === fRuangan) &&
+    (fKelas === 'all' || j.Kelas === fKelas)
+  );
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📌</div><div class="empty-state-title">Belum ada jadwal</div><div class="empty-state-text">Tambahkan jadwal terlebih dahulu di menu Jadwal Kuliah</div></div>`;
+    return;
+  }
+
+  // Ambil semua ruangan unik yang ada (setelah filter)
+  const ruanganList = [...new Set(filtered.map(j => j.Ruangan).filter(Boolean))].sort();
+
+  // Ambil semua slot jam yang dipakai
+  const semuaJam = [...new Set(filtered.flatMap(j => [j['Jam Mulai'], j['Jam Selesai']]).filter(Boolean))].sort();
+
+  const hariWarna = { Senin:'#34D399',Selasa:'#22D3EE',Rabu:'#818CF8',Kamis:'#D4AF37',Jumat:'#F43F5E',Sabtu:'#F97316' };
+
+  // Render satu tabel per ruangan (atau grid semua ruangan)
+  let html = `
+    <div style="overflow-x:auto;">
+      <div style="font-family:'Lora',serif;text-align:center;margin-bottom:24px;">
+        <div style="font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:4px;">Politeknik Negeri Ujung Pandang</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text-primary);">JADWAL PENGGUNAAN RUANGAN & LAB</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text-primary);">Program Studi Administrasi Perkantoran</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Semester Aktif Tahun Akademik ${new Date().getFullYear()}/${new Date().getFullYear()+1}</div>
+      </div>`;
+
+  // Tabel per ruangan
+  ruanganList.forEach(ruangan => {
+    const jadwalRuangan = filtered.filter(j => j.Ruangan === ruangan);
+    html += `
+      <div style="margin-bottom:36px;">
+        <div style="font-weight:800;font-size:14px;margin-bottom:10px;padding:8px 14px;background:var(--accent-subtle);border-left:4px solid var(--accent);border-radius:0 8px 8px 0;color:var(--accent);">
+          📍 Ruangan: ${ruangan}
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:600px;">
+          <thead>
+            <tr style="background:var(--bg-elevated);">
+              <th style="padding:10px 12px;text-align:left;border:1.5px solid var(--border);font-size:11px;font-weight:800;letter-spacing:1px;min-width:80px;">HARI</th>
+              ${jadwalRuangan.length > 0 ?
+                [...new Set(jadwalRuangan.map(j => `${j['Jam Mulai']}–${j['Jam Selesai']}`))].sort().map(jam =>
+                  `<th style="padding:8px;text-align:center;border:1.5px solid var(--border);font-size:10px;font-weight:800;">${jam}</th>`
+                ).join('') :
+                '<th style="padding:8px;border:1.5px solid var(--border);">—</th>'
+              }
+            </tr>
+          </thead>
+          <tbody>
+            ${HARI_LIST.map(hari => {
+              const jadwalHari = jadwalRuangan.filter(j => j.Hari === hari);
+              const warna = hariWarna[hari] || 'var(--accent)';
+              const slotJam = [...new Set(jadwalRuangan.map(j => `${j['Jam Mulai']}–${j['Jam Selesai']}`))].sort();
+              return `<tr>
+                <td style="padding:10px 12px;border:1.5px solid var(--border);font-weight:800;color:${warna};background:${warna}10;">${hari}</td>
+                ${slotJam.map(jam => {
+                  const [mulai, selesai] = jam.split('–');
+                  const slot = jadwalHari.find(j => j['Jam Mulai'] === mulai && j['Jam Selesai'] === selesai);
+                  if (slot) {
+                    return `<td style="padding:8px;border:1.5px solid var(--border);background:${warna}15;vertical-align:top;">
+                      <div style="font-weight:800;font-size:11px;color:var(--text-primary);margin-bottom:3px;">${slot['Nama Mata Kuliah']}</div>
+                      <div style="font-size:10px;color:var(--text-muted);">${slot['Dosen Pengampu']||''}</div>
+                      <div style="font-size:10px;font-weight:700;color:${warna};margin-top:3px;">${slot.Kelas||''}</div>
+                    </td>`;
+                  }
+                  return `<td style="padding:8px;border:1.5px solid var(--border);background:var(--bg-glass);"></td>`;
+                }).join('')}
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ================================================
+// STATUS KULIAH — JADWAL 2 (SEDANG / BELUM KULIAH)
+// ================================================
+let STATUS_KULIAH_DATA = {};
+let STATUS_INTERVAL = null;
+let KETUA_SESSION = null;
+
+async function renderStatusKuliah() {
+  updateTopbar('Status Kuliah', 'Pantau kehadiran kuliah dan ketersediaan ruangan hari ini');
+  await loadAllData();
+
+  // Cek session ketua
+  const savedSession = localStorage.getItem('ketua_session');
+  if (savedSession) {
+    try { KETUA_SESSION = JSON.parse(savedSession); } catch(e) { KETUA_SESSION = null; }
+  }
+
+  const loginBox = document.getElementById('status-kuliah-login-box');
+  const infoBar = document.getElementById('ketua-info-bar');
+
+  if (KETUA_SESSION) {
+    if (loginBox) loginBox.style.display = 'none';
+    if (infoBar) {
+      infoBar.style.display = 'flex';
+      document.getElementById('ketua-info-text').textContent = `🎓 Login sebagai: ${KETUA_SESSION.nama} (${KETUA_SESSION.kelas})`;
+    }
+  } else {
+    if (loginBox) loginBox.style.display = 'block';
+    if (infoBar) infoBar.style.display = 'none';
+  }
+
+  await loadStatusKuliah();
+  drawStatusKuliah();
+
+  // Auto-refresh setiap 30 detik dan auto-reset berdasarkan jam
+  if (STATUS_INTERVAL) clearInterval(STATUS_INTERVAL);
+  STATUS_INTERVAL = setInterval(async () => {
+    await loadStatusKuliah();
+    checkAutoReset();
+    drawStatusKuliah();
+  }, 30000);
+}
+
+async function loadStatusKuliah() {
+  if (!APPS_SCRIPT_URL) return;
+  const today = getTodayString();
+  const attempts = [
+    () => fetch(`${APPS_SCRIPT_URL}?action=getStatusKuliah&tanggal=${today}`, { signal: AbortSignal.timeout(8000) }),
+    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(APPS_SCRIPT_URL+'?action=getStatusKuliah&tanggal='+today)}`, { signal: AbortSignal.timeout(8000) })
+  ];
+  for (const attempt of attempts) {
+    try {
+      const res = await attempt();
+      if (!res.ok) continue;
+      const json = await res.json();
+      if (json.status === 'success') { STATUS_KULIAH_DATA = json.data || {}; return; }
+    } catch(e) { continue; }
+  }
+}
+
+function getTodayString() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth()+1).padStart(2,'0');
+  const d = String(now.getDate()).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+
+function getNamaHariIni() {
+  return ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][new Date().getDay()];
+}
+
+function getJamSekarang() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+function checkAutoReset() {
+  const jamNow = getJamSekarang();
+  STATE.data.jadwal.forEach(j => {
+    const status = STATUS_KULIAH_DATA[j.ID];
+    if (status && status.status === 'Sedang Kuliah' && j['Jam Selesai'] && jamNow >= j['Jam Selesai']) {
+      STATUS_KULIAH_DATA[j.ID] = { status: 'Belum Kuliah', diklikkOleh: '', waktuKlik: '' };
+      apiPost('resetStatusKuliah', { idJadwal: j.ID });
+    }
+  });
+}
+
+function drawStatusKuliah() {
+  const container = document.getElementById('status-kuliah-content');
+  if (!container) return;
+
+  const hariIni = getNamaHariIni();
+  const jadwal = STATE.data.jadwal;
+
+  if (jadwal.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">Belum ada jadwal</div><div class="empty-state-text">Tambahkan jadwal terlebih dahulu</div></div>`;
+    return;
+  }
+
+  const hariColors = { Senin:'#34D399',Selasa:'#22D3EE',Rabu:'#818CF8',Kamis:'#D4AF37',Jumat:'#F43F5E',Sabtu:'#F97316' };
+
+  let html = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
+      <div style="font-size:13px;color:var(--text-muted);">🕐 Jam sekarang: <strong style="color:var(--text-primary);">${getJamSekarang()}</strong> · Hari ini: <strong style="color:var(--accent);">${hariIni}</strong></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="width:10px;height:10px;border-radius:50%;background:#10B981;display:inline-block;"></span> Sedang Kuliah</span>
+        <span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--text-muted);display:inline-block;"></span> Belum Kuliah</span>
+        ${KETUA_SESSION ? `<button class="btn btn-ghost btn-sm" onclick="resetSemuaStatus()">🔄 Reset Semua Status</button>` : ''}
+      </div>
+    </div>`;
+
+  HARI_LIST.forEach(hari => {
+    const jadwalHari = jadwal.filter(j => j.Hari === hari).sort((a,b) => (a['Jam Mulai']||'').localeCompare(b['Jam Mulai']||''));
+    if (jadwalHari.length === 0) return;
+    const warna = hariColors[hari] || 'var(--accent)';
+    const isToday = hari === hariIni;
+
+    html += `
+      <div style="margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span style="font-weight:800;font-size:14px;padding:4px 14px;border-radius:100px;background:${warna}20;color:${warna};border:1.5px solid ${warna}40;">${hari}</span>
+          ${isToday ? '<span style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent);">← HARI INI</span>' : ''}
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+          ${jadwalHari.map(j => {
+            const statusData = STATUS_KULIAH_DATA[j.ID] || {};
+            const isSedang = statusData.status === 'Sedang Kuliah';
+            const canClick = KETUA_SESSION && isToday && KETUA_SESSION.kelas === j.Kelas;
+            const sudahLewat = isToday && j['Jam Selesai'] && getJamSekarang() >= j['Jam Selesai'];
+
+            return `<div style="border-radius:14px;padding:16px;border:1.5px solid ${isSedang ? '#10B981' : 'var(--border)'};background:${isSedang ? 'rgba(16,185,129,0.06)' : 'var(--bg-surface)'};transition:all 0.2s;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">
+                <div>
+                  <div style="font-weight:800;font-size:13px;color:var(--text-primary);">${j['Nama Mata Kuliah']}</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${j['Dosen Pengampu']||'-'}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                  <div style="font-size:11px;font-weight:700;font-family:monospace;color:${warna};">${j['Jam Mulai']}–${j['Jam Selesai']}</div>
+                  <div style="font-size:10px;color:var(--text-muted);">📍 ${j.Ruangan}</div>
+                </div>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <span style="font-size:10px;font-weight:700;padding:2px 10px;border-radius:100px;background:${warna}15;color:${warna};">${j.Kelas}</span>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:${isSedang ? '#10B981' : 'var(--text-muted)'};">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${isSedang ? '#10B981' : 'var(--text-muted)'}; ${isSedang ? 'box-shadow:0 0 6px #10B981;animation:pulse 2s infinite;' : ''}"></span>
+                    ${isSedang ? 'Sedang Kuliah' : sudahLewat ? 'Selesai' : 'Belum Kuliah'}
+                  </span>
+                  ${canClick && !sudahLewat ? `
+                    <button onclick="toggleStatusKuliah('${j.ID}', '${j.Kelas}', ${isSedang})"
+                      style="padding:4px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;
+                        background:${isSedang ? 'rgba(244,63,94,0.1)' : 'rgba(16,185,129,0.1)'};
+                        border:1.5px solid ${isSedang ? 'rgba(244,63,94,0.3)' : 'rgba(16,185,129,0.3)'};
+                        color:${isSedang ? '#F43F5E' : '#10B981'};">
+                      ${isSedang ? '⏹ Reset' : '▶ Mulai'}
+                    </button>` : ''}
+                </div>
+              </div>
+              ${isSedang && statusData.diklikkOleh ? `<div style="font-size:10px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:6px;">Diklik oleh: ${statusData.diklikkOleh} · ${statusData.waktuKlik||''}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+async function toggleStatusKuliah(idJadwal, kelasJadwal, currentlySedang) {
+  if (!KETUA_SESSION) { showToast('⚠️ Login sebagai ketua kelas terlebih dahulu', 'warning'); return; }
+  if (KETUA_SESSION.kelas !== kelasJadwal) { showToast('⚠️ Kamu hanya bisa mengubah status untuk kelasmu sendiri', 'warning'); return; }
+  const newStatus = currentlySedang ? 'Belum Kuliah' : 'Sedang Kuliah';
+  STATUS_KULIAH_DATA[idJadwal] = { status: newStatus, diklikkOleh: KETUA_SESSION.nama, waktuKlik: getJamSekarang() };
+  drawStatusKuliah();
+  await apiPost('setStatusKuliah', { idJadwal, status: newStatus, namaKetua: KETUA_SESSION.nama });
+  showToast(newStatus === 'Sedang Kuliah' ? '✅ Status: Sedang Kuliah' : '⏹ Status direset ke Belum Kuliah', 'success');
+}
+
+async function resetSemuaStatus() {
+  if (!confirm('Reset semua status kuliah hari ini ke "Belum Kuliah"?')) return;
+  Object.keys(STATUS_KULIAH_DATA).forEach(id => { STATUS_KULIAH_DATA[id] = { status: 'Belum Kuliah' }; });
+  drawStatusKuliah();
+  await apiPost('resetStatusKuliah', {});
+  showToast('🔄 Semua status direset', 'info');
+}
+
+async function loginKetua() {
+  const username = document.getElementById('ketua-username').value.trim();
+  const password = document.getElementById('ketua-password').value.trim();
+  if (!username || !password) { showToast('⚠️ Isi username dan password', 'warning'); return; }
+  if (!APPS_SCRIPT_URL) { showToast('⚠️ APPS_SCRIPT_URL belum diisi', 'error'); return; }
+
+  showToast('⏳ Memeriksa akun...', 'info');
+  const url = `${APPS_SCRIPT_URL}?action=loginKetua&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.status === 'success') {
+      KETUA_SESSION = json.data;
+      localStorage.setItem('ketua_session', JSON.stringify(KETUA_SESSION));
+      showToast(`✅ Login berhasil! Selamat datang, ${KETUA_SESSION.nama}`, 'success');
+      renderStatusKuliah();
+    } else {
+      showToast('❌ ' + (json.message || 'Username atau password salah'), 'error');
+    }
+  } catch(e) {
+    showToast('❌ Gagal terhubung ke server', 'error');
+  }
+}
+
+function logoutKetua() {
+  KETUA_SESSION = null;
+  localStorage.removeItem('ketua_session');
+  showToast('👋 Logout berhasil', 'info');
+  renderStatusKuliah();
+}
+
+// ================================================
+// AKUN KETUA KELAS (CRUD)
+// ================================================
+async function renderAkunKetuaPage() {
+  updateTopbar('Akun Ketua Kelas', 'Kelola akun login ketua kelas');
+  await loadAllData();
+  const container = document.getElementById('akun-ketua-content');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="filter-bar-wrap">
+      <div class="filter-row">
+        <div class="filter-group" style="flex:1;">
+          <label class="filter-label">🔍 Cari</label>
+          <input type="text" id="kt-search" class="filter-input" placeholder="Cari nama, username, kelas..." oninput="renderAkunKetuaTable()">
+        </div>
+        <button class="btn btn-primary" onclick="openAkunKetuaModal()">➕ Tambah Akun Ketua</button>
+      </div>
+    </div>
+    <div id="kt-table-wrap"></div>`;
+
+  renderAkunKetuaTable();
+}
+
+function renderAkunKetuaTable() {
+  const wrap = document.getElementById('kt-table-wrap');
+  if (!wrap) return;
+  const search = (document.getElementById('kt-search')?.value || '').toLowerCase();
+  const filtered = STATE.data.akunKetua.filter(a =>
+    !search || Object.values(a).some(v => String(v).toLowerCase().includes(search))
+  ).sort((a,b) => String(a.Nama).localeCompare(String(b.Nama)));
+
+  if (filtered.length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🔑</div><div class="empty-state-title">Belum ada akun ketua kelas</div><div class="empty-state-text">Klik "Tambah Akun Ketua" untuk menambahkan akun baru</div></div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="nilai-table-container">
+      <table class="data-table data-table-center">
+        <thead><tr><th class="col-left">Nama</th><th>Kelas</th><th>Username</th><th>Password</th><th>Aksi</th></tr></thead>
+        <tbody>
+          ${filtered.map(a => `
+            <tr>
+              <td class="col-left"><strong>${a.Nama}</strong></td>
+              <td><span style="background:var(--accent-subtle);color:var(--accent);padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700;border:1px solid var(--accent-border);">${a.Kelas}</span></td>
+              <td style="font-family:monospace;">${a.Username}</td>
+              <td style="font-family:monospace;">${a.Password}</td>
+              <td>
+                <div style="display:flex;gap:6px;justify-content:center;">
+                  <button class="btn-row-action edit" onclick='openAkunKetuaModal(${JSON.stringify(a).replace(/'/g,"&apos;")})' title="Edit">✏️</button>
+                  <button class="btn-row-action delete" onclick="hapusAkunKetua('${a.ID}')" title="Hapus">🗑️</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function openAkunKetuaModal(data) {
+  STATE.editingId = data ? data.ID : null;
+  document.getElementById('modal-kt-title').textContent = data ? 'Edit Akun Ketua' : 'Tambah Akun Ketua Kelas';
+  document.getElementById('kt-nama').value = data ? data.Nama : '';
+  document.getElementById('kt-kelas').value = data ? data.Kelas : '';
+  document.getElementById('kt-username').value = data ? data.Username : '';
+  document.getElementById('kt-password').value = data ? data.Password : '';
+  document.getElementById('modal-akun-ketua').classList.add('open');
+}
+
+function closeAkunKetuaModal() {
+  document.getElementById('modal-akun-ketua').classList.remove('open');
+  STATE.editingId = null;
+}
+
+async function submitAkunKetua() {
+  const nama = document.getElementById('kt-nama').value.trim();
+  const kelas = document.getElementById('kt-kelas').value.trim();
+  const username = document.getElementById('kt-username').value.trim();
+  const password = document.getElementById('kt-password').value.trim();
+  if (!nama || !kelas || !username || !password) { showToast('⚠️ Semua field wajib diisi', 'warning'); return; }
+
+  const payload = { nama, kelas, username, password };
+  if (STATE.editingId) {
+    payload.id = STATE.editingId;
+    await apiPost('editAkunKetua', payload);
+    const idx = STATE.data.akunKetua.findIndex(a => a.ID === STATE.editingId);
+    if (idx > -1) STATE.data.akunKetua[idx] = { ...STATE.data.akunKetua[idx], Nama: nama, Kelas: kelas, Username: username, Password: password };
+    showToast('✅ Akun berhasil diupdate', 'success');
+  } else {
+    const tempId = 'TEMP-' + Date.now();
+    await apiPost('addAkunKetua', payload);
+    STATE.data.akunKetua.push({ ID: tempId, Nama: nama, Kelas: kelas, Username: username, Password: password });
+    showToast('✅ Akun ketua berhasil ditambahkan', 'success');
+  }
+  closeAkunKetuaModal();
+  renderAkunKetuaTable();
+  setTimeout(() => loadAllData(true), 1500);
+}
+
+async function hapusAkunKetua(id) {
+  if (!confirm('Yakin ingin menghapus akun ketua ini?')) return;
+  await apiPost('deleteAkunKetua', { id });
+  STATE.data.akunKetua = STATE.data.akunKetua.filter(a => a.ID !== id);
+  showToast('🗑️ Akun berhasil dihapus', 'warning');
+  renderAkunKetuaTable();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
