@@ -1844,74 +1844,39 @@ async function renderJadwalPublik() {
                   }
                 });
                 if (startIdx === -1) {
-                  SLOTS.forEach((s, i) => {
-                    if (!s.istirahat && s.mulai <= mulai && startIdx === -1) startIdx = i;
-                  });
+                  for (let i = 0; i < SLOTS.length; i++) {
+                    if (!SLOTS[i].istirahat && SLOTS[i].mulai <= mulai) startIdx = i;
+                  }
                 }
                 if (endIdx === -1 || endIdx < startIdx) endIdx = startIdx;
 
-                // Mark semua slot dalam range sebagai skip dulu
-                for (let x = startIdx + 1; x <= endIdx; x++) rendered[x] = 'skip';
-
-                // Colspan = jumlah slot dalam range yang TIDAK di-skip sebelumnya
-                // = jumlah yang akan dirender sebagai <td> (termasuk startIdx itu sendiri)
-                // Karena kita baru mark skip, semua slot dalam range ini skip kecuali startIdx
-                // Jadi colspan = jumlah slot dari startIdx ke endIdx yang rendered !== 'skip_sebelumnya'
-                // Tapi istirahat di antara juga perlu dihitung jika tidak di-skip
-                // Simpelnya: colspan = jumlah index dari startIdx ke endIdx yang rendered[x] === 'skip' BARU
-                // + 1 (startIdx sendiri)
-                // = endIdx - startIdx + 1 - (skip yang sudah ada sebelum jadwal ini) [= 0 karena baru]
-                // Intinya: colspan = jumlah <td> yang akan dirender dalam range ini
-                // Slot yang di-skip = return '' = tidak ada <td>
-                // Jadi colspan harus = jumlah slot dalam range yang TIDAK return ''
-                // Slot yang return '' = rendered[x] === 'skip'
-                // Dalam range [startIdx, endIdx], semua yang baru di-skip via loop di atas
-                // Tapi istirahat dalam range juga di-skip via rendered[x] = 'skip'
-                // Jadi colspan = 1 (hanya startIdx yang dirender sebagai <td>)... itu salah
-
-                // Pendekatan benar: JANGAN skip istirahat dalam range jadwal
-                // Biarkan istirahat dirender sebagai <td> tersendiri, tapi jadwal yang overlap
-                // akan colspan melewatinya. Ini berarti kita perlu split jadwal di istirahat.
-
-                // SOLUSI FINAL: hitung jumlah <td> yang akan muncul = semua slot yang tidak di-skip
-                let colspanCount = 1; // startIdx dirender
-                for (let x = startIdx + 1; x <= endIdx; x++) {
-                  // rendered[x] = 'skip' berarti tidak dirender = tidak menambah colspan
-                  // TAPI kita baru saja set rendered[x] = 'skip'
-                  // Jadi semua dari startIdx+1 ke endIdx tidak dirender
-                  // Artinya colspan = 1... ini masih salah
-
-                  // Yang benar: colspan browser = jumlah kolom yang di-merge
-                  // Karena kita tidak render <td> untuk yang di-skip,
-                  // colspan harus = 1 (hanya kolom startIdx)
-                  // Tapi itu akan membuat konten hanya selebar 1 kolom
-                }
-
-                // SOLUSI BERSIH: Tidak skip slot istirahat yang ada di dalam range jadwal.
-                // Hanya skip slot reguler. Istirahat yang di dalam range jadwal tetap dirender
-                // tapi sebagai bagian dari colspan.
-                // Untuk ini, kita unset skip untuk istirahat dalam range:
-                for (let x = startIdx + 1; x <= endIdx; x++) {
-                  if (SLOTS[x] && SLOTS[x].istirahat) {
-                    rendered[x] = 'in_range'; // istirahat dalam range, akan di-skip berbeda
+                // Isi setiap slot dalam range, lewati istirahat (biarkan kosong)
+                let currentStart = startIdx;
+                let spanCount = 0;
+                for (let x = startIdx; x <= endIdx; x++) {
+                  if (SLOTS[x].istirahat) {
+                    // Simpan segment sebelum istirahat
+                    if (spanCount > 0) {
+                      rendered[currentStart] = { jadwal: j, span: spanCount, warna };
+                      for (let y = currentStart + 1; y < currentStart + spanCount; y++) rendered[y] = 'skip';
+                    }
+                    spanCount = 0;
+                    currentStart = x + 1;
+                  } else {
+                    spanCount++;
                   }
                 }
-
-                // Hitung colspan = jumlah slot yang akan dirender (tidak di-skip sama sekali)
-                let span = 1;
-                for (let x = startIdx + 1; x <= endIdx; x++) {
-                  if (rendered[x] === 'in_range') span++; // istirahat dalam range ikut dihitung
-                  // rendered[x] === 'skip' = tidak dihitung
+                // Simpan segment terakhir
+                if (spanCount > 0) {
+                  rendered[currentStart] = { jadwal: j, span: spanCount, warna };
+                  for (let y = currentStart + 1; y < currentStart + spanCount; y++) rendered[y] = 'skip';
                 }
-
-                rendered[startIdx] = { jadwal: j, span, warna };
               });
 
               return `<tr>
                 <td style="padding:8px 12px;border:1.5px solid var(--border);font-weight:800;color:${warna};background:${warna}10;white-space:nowrap;">${hari}</td>
                 ${SLOTS.map((s, i) => {
                   if (rendered[i] === 'skip') return '';
-                  if (rendered[i] === 'in_range') return ''; // istirahat dalam range jadwal, sudah dicakup colspan
                   if (s.istirahat) {
                     return `<td style="padding:4px 2px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;min-width:40px;"><span style="font-size:9px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
                   }
