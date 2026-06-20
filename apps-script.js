@@ -171,20 +171,67 @@ function buildJadwalRow(data, existingId) {
 // ================================================
 function handleAdd(sheetName, rowData) {
   const sheet = getOrCreateSheet(sheetName);
-  sheet.appendRow(rowData);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const expectedHeaders = HEADERS[sheetName];
+
+  // Pastikan semua kolom yang dibutuhkan sudah ada di sheet
+  // Kalau ada kolom baru yang belum ada, tambahkan dulu
+  expectedHeaders.forEach((h, i) => {
+    if (!headers.includes(h)) {
+      const newColIdx = headers.length + 1;
+      sheet.getRange(1, newColIdx).setValue(h);
+      const headerCell = sheet.getRange(1, newColIdx);
+      headerCell.setBackground('#1E3A5F').setFontColor('#FFFFFF').setFontWeight('bold');
+      headers.push(h); // update array lokal juga
+    }
+  });
+
+  // Tulis data sesuai urutan header yang ada di sheet (bukan urutan rowData)
+  const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const orderedRow = currentHeaders.map(h => {
+    const idx = expectedHeaders.indexOf(h);
+    return idx >= 0 ? (rowData[idx] !== undefined ? rowData[idx] : '') : '';
+  });
+
+  sheet.appendRow(orderedRow);
   return jsonOutput({ status: 'success', message: 'Data berhasil ditambahkan', id: rowData[0] });
 }
 
 function handleEdit(sheetName, id, rowData) {
   const sheet = getOrCreateSheet(sheetName);
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]) === String(id)) {
-      const lastCol = sheet.getLastColumn();
-      // Pertahankan tanggal daftar asli (kolom terakhir), jangan ditimpa null
-      const tanggalAsli = data[i][lastCol - 1];
-      const finalRow = rowData.map((v, idx) => (idx === rowData.length - 1 && v === null) ? tanggalAsli : v);
-      sheet.getRange(i + 1, 1, 1, finalRow.length).setValues([finalRow]);
+  const expectedHeaders = HEADERS[sheetName];
+
+  // Pastikan semua kolom ada di sheet (migrasi otomatis)
+  let currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  expectedHeaders.forEach(h => {
+    if (!currentHeaders.includes(h)) {
+      const newColIdx = currentHeaders.length + 1;
+      sheet.getRange(1, newColIdx).setValue(h);
+      const headerCell = sheet.getRange(1, newColIdx);
+      headerCell.setBackground('#1E3A5F').setFontColor('#FFFFFF').setFontWeight('bold');
+      currentHeaders.push(h);
+    }
+  });
+
+  // Refresh headers setelah migrasi
+  currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+  const allData = sheet.getDataRange().getValues();
+  for (let i = 1; i < allData.length; i++) {
+    if (String(allData[i][0]) === String(id)) {
+      // Buat row baru berdasarkan header yang ada di sheet
+      const updatedRow = currentHeaders.map((h, colIdx) => {
+        const expectedIdx = expectedHeaders.indexOf(h);
+        if (h === 'Tanggal Daftar' || h === 'Tanggal Dibuat' || h === 'Tanggal Input') {
+          // Pertahankan tanggal asli kalau rowData null
+          const newVal = expectedIdx >= 0 ? rowData[expectedIdx] : null;
+          return (newVal === null || newVal === undefined) ? allData[i][colIdx] : newVal;
+        }
+        if (expectedIdx >= 0 && rowData[expectedIdx] !== undefined) return rowData[expectedIdx];
+        return allData[i][colIdx]; // pertahankan nilai lama kalau kolom tidak ada di rowData
+      });
+
+      sheet.getRange(i + 1, 1, 1, updatedRow.length).setValues([updatedRow]);
       return jsonOutput({ status: 'success', message: 'Data berhasil diupdate' });
     }
   }
