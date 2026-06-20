@@ -142,21 +142,27 @@ async function apiGet(action, extraParams) {
   if (!APPS_SCRIPT_URL) { showToast('⚠️ APPS_SCRIPT_URL belum diisi di data/config.js', 'error'); return null; }
   let url = `${APPS_SCRIPT_URL}?action=${action}`;
   if (extraParams) url += '&' + extraParams;
+
+  // Coba langsung dulu (Apps Script sudah support CORS untuk GET)
   const attempts = [
-    () => fetch(url, { signal: AbortSignal.timeout(10000) }),
-    () => fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) }),
-    () => fetch('https://corsproxy.io/?' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) })
+    () => fetch(url, { signal: AbortSignal.timeout(12000) }),
+    () => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) }),
+    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) }),
+    () => fetch(`https://thingproxy.freeboard.io/fetch/${url}`, { signal: AbortSignal.timeout(10000) })
   ];
+
   for (const attempt of attempts) {
     try {
       const res = await attempt();
       if (!res.ok) continue;
-      const json = await res.json();
+      const text = await res.text();
+      if (!text || text.trim() === '') continue;
+      const json = JSON.parse(text);
       if (json.status === 'success') return json;
       if (json.status === 'error') { showToast('❌ ' + json.message, 'error'); return null; }
     } catch (e) { continue; }
   }
-  showToast('❌ Gagal terhubung ke server. Cek koneksi atau APPS_SCRIPT_URL.', 'error');
+  showToast('❌ Gagal terhubung ke server. Pastikan Apps Script sudah di-deploy dengan akses "Anyone".', 'error');
   return null;
 }
 
@@ -1810,15 +1816,19 @@ async function renderStatusKuliah() {
 async function loadStatusKuliah() {
   if (!APPS_SCRIPT_URL) return;
   const today = getTodayString();
+  const url = `${APPS_SCRIPT_URL}?action=getStatusKuliah&tanggal=${today}`;
   const attempts = [
-    () => fetch(`${APPS_SCRIPT_URL}?action=getStatusKuliah&tanggal=${today}`, { signal: AbortSignal.timeout(8000) }),
-    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(APPS_SCRIPT_URL+'?action=getStatusKuliah&tanggal='+today)}`, { signal: AbortSignal.timeout(8000) })
+    () => fetch(url, { signal: AbortSignal.timeout(10000) }),
+    () => fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) }),
+    () => fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(10000) })
   ];
   for (const attempt of attempts) {
     try {
       const res = await attempt();
       if (!res.ok) continue;
-      const json = await res.json();
+      const text = await res.text();
+      if (!text) continue;
+      const json = JSON.parse(text);
       if (json.status === 'success') { STATUS_KULIAH_DATA = json.data || {}; return; }
     } catch(e) { continue; }
   }
