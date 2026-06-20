@@ -2203,7 +2203,7 @@ function drawStatusKuliah() {
   const hariIni = getNamaHariIni();
   const jadwal = STATE.data.jadwal;
 
-  // Kalau belum login, tampilkan hanya pesan info tanpa jadwal
+  // Kalau belum login, tampilkan pesan
   if (!KETUA_SESSION) {
     container.innerHTML = `
       <div style="text-align:center;padding:40px 20px;">
@@ -2215,21 +2215,55 @@ function drawStatusKuliah() {
   }
 
   if (jadwal.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">Belum ada jadwal</div><div class="empty-state-text">Tambahkan jadwal terlebih dahulu</div></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-title">Belum ada jadwal</div></div>`;
     return;
   }
 
   const hariColors = { Senin:'#34D399',Selasa:'#22D3EE',Rabu:'#818CF8',Kamis:'#D4AF37',Jumat:'#F43F5E',Sabtu:'#F97316' };
 
+  // Jadwal hari ini untuk panel ruangan
+  const jadwalHariIni = jadwal.filter(j => j.Hari === hariIni);
+  const semuaRuangan = [...new Set(jadwal.map(j => j.Ruangan).filter(Boolean))].sort();
+  const ruanganTerpakai = new Set(
+    jadwalHariIni
+      .filter(j => (STATUS_KULIAH_DATA[j.ID]?.status === 'Sedang Kuliah'))
+      .map(j => j.Ruangan)
+  );
+  const ruanganJadwalHariIni = new Set(jadwalHariIni.map(j => j.Ruangan));
+
   let html = `
+    <!-- INFO BAR -->
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px;">
-      <div style="font-size:13px;color:var(--text-muted);">🕐 Jam sekarang: <strong style="color:var(--text-primary);">${getJamSekarang()}</strong> · Hari ini: <strong style="color:var(--accent);">${hariIni}</strong></div>
+      <div style="font-size:13px;color:var(--text-muted);">🕐 <strong style="color:var(--text-primary);">${getJamSekarang()}</strong> · Hari ini: <strong style="color:var(--accent);">${hariIni}</strong></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
         <span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="width:10px;height:10px;border-radius:50%;background:#10B981;display:inline-block;"></span> Sedang Kuliah</span>
-        <span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--text-muted);display:inline-block;"></span> Belum Kuliah</span>
+        <span style="display:flex;align-items:center;gap:4px;font-size:11px;"><span style="width:10px;height:10px;border-radius:50%;background:var(--text-muted);display:inline-block;"></span> Belum Kuliah / Kosong</span>
         <button class="btn btn-ghost btn-sm" onclick="resetSemuaStatus()">🔄 Reset Semua</button>
       </div>
-    </div>`;
+    </div>
+
+    <!-- PANEL RINGKASAN RUANGAN -->
+    <div style="margin-bottom:28px;">
+      <div style="font-weight:800;font-size:13px;margin-bottom:12px;color:var(--text-primary);">📍 Status Ruangan Hari Ini</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;">
+        ${semuaRuangan.map(ruangan => {
+          const terpakai = ruanganTerpakai.has(ruangan);
+          const adaJadwal = ruanganJadwalHariIni.has(ruangan);
+          const statusLabel = terpakai ? 'Sedang Dipakai' : adaJadwal ? 'Belum Mulai' : 'Kosong';
+          const bgColor = terpakai ? 'rgba(16,185,129,0.1)' : 'var(--bg-surface)';
+          const borderColor = terpakai ? '#10B981' : 'var(--border)';
+          const dotColor = terpakai ? '#10B981' : adaJadwal ? '#F59E0B' : 'var(--text-muted)';
+          return `<div style="padding:12px;border-radius:12px;border:1.5px solid ${borderColor};background:${bgColor};text-align:center;">
+            <div style="width:10px;height:10px;border-radius:50%;background:${dotColor};margin:0 auto 6px;${terpakai?'box-shadow:0 0 8px '+dotColor+';':''}"></div>
+            <div style="font-weight:800;font-size:12px;color:var(--text-primary);">📍 ${ruangan}</div>
+            <div style="font-size:10px;font-weight:600;color:${dotColor};margin-top:3px;">${statusLabel}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin-bottom:24px;"></div>
+    <div style="font-weight:800;font-size:13px;margin-bottom:16px;color:var(--text-primary);">📋 Status Per Jadwal</div>`;
 
   HARI_LIST.forEach(hari => {
     const jadwalHari = jadwal.filter(j => j.Hari === hari).sort((a,b) => formatJam(a['Jam Mulai']).localeCompare(formatJam(b['Jam Mulai'])));
@@ -2243,18 +2277,20 @@ function drawStatusKuliah() {
           <span style="font-weight:800;font-size:14px;padding:4px 14px;border-radius:100px;background:${warna}20;color:${warna};border:1.5px solid ${warna}40;">${hari}</span>
           ${isToday ? '<span style="font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--accent);">← HARI INI</span>' : ''}
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;">
           ${jadwalHari.map(j => {
             const statusData = STATUS_KULIAH_DATA[j.ID] || {};
             const isSedang = statusData.status === 'Sedang Kuliah';
             const jamMulai = formatJam(j['Jam Mulai']);
             const jamSelesai = formatJam(j['Jam Selesai']);
-            const canClick = isToday && KETUA_SESSION.kelas === j.Kelas;
+            // Semua ketua kelas bisa klik — tidak hanya kelasnya sendiri
+            const canClick = isToday;
             const sudahLewat = isToday && jamSelesai && getJamSekarang() >= jamSelesai;
+            const isMyClass = KETUA_SESSION.kelas === j.Kelas;
 
             return `<div style="border-radius:14px;padding:16px;border:1.5px solid ${isSedang ? '#10B981' : 'var(--border)'};background:${isSedang ? 'rgba(16,185,129,0.06)' : 'var(--bg-surface)'};transition:all 0.2s;">
               <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:10px;">
-                <div>
+                <div style="flex:1;">
                   <div style="font-weight:800;font-size:13px;color:var(--text-primary);">${j['Nama Mata Kuliah']}</div>
                   <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">${j['Dosen Pengampu']||'-'}</div>
                 </div>
@@ -2264,7 +2300,10 @@ function drawStatusKuliah() {
                 </div>
               </div>
               <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-                <span style="font-size:10px;font-weight:700;padding:2px 10px;border-radius:100px;background:${warna}15;color:${warna};">${j.Kelas}</span>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span style="font-size:10px;font-weight:700;padding:2px 10px;border-radius:100px;background:${warna}15;color:${warna};">${j.Kelas}</span>
+                  ${isMyClass ? '<span style="font-size:9px;font-weight:700;color:var(--accent);background:var(--accent-subtle);padding:1px 6px;border-radius:4px;">Kelasku</span>' : ''}
+                </div>
                 <div style="display:flex;align-items:center;gap:8px;">
                   <span style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:${isSedang ? '#10B981' : 'var(--text-muted)'};">
                     <span style="width:8px;height:8px;border-radius:50%;background:${isSedang ? '#10B981' : 'var(--text-muted)'};${isSedang ? 'box-shadow:0 0 6px #10B981;' : ''}"></span>
@@ -2292,12 +2331,11 @@ function drawStatusKuliah() {
 
 async function toggleStatusKuliah(idJadwal, kelasJadwal, currentlySedang) {
   if (!KETUA_SESSION) { showToast('⚠️ Login sebagai ketua kelas terlebih dahulu', 'warning'); return; }
-  if (KETUA_SESSION.kelas !== kelasJadwal) { showToast('⚠️ Kamu hanya bisa mengubah status untuk kelasmu sendiri', 'warning'); return; }
   const newStatus = currentlySedang ? 'Belum Kuliah' : 'Sedang Kuliah';
   STATUS_KULIAH_DATA[idJadwal] = { status: newStatus, diklikkOleh: KETUA_SESSION.nama, waktuKlik: getJamSekarang() };
   drawStatusKuliah();
   await apiPost('setStatusKuliah', { idJadwal, status: newStatus, namaKetua: KETUA_SESSION.nama });
-  showToast(newStatus === 'Sedang Kuliah' ? '✅ Status: Sedang Kuliah' : '⏹ Status direset ke Belum Kuliah', 'success');
+  showToast(newStatus === 'Sedang Kuliah' ? '✅ Ruangan aktif — Sedang Kuliah' : '⏹ Status direset ke Belum Kuliah', 'success');
 }
 
 async function resetSemuaStatus() {
