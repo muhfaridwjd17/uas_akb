@@ -118,12 +118,15 @@
       <a class="nav-item" data-page="rapor"><span class="nav-icon">📋</span> Rapor &amp; KHS</a>
       <a class="nav-item" data-page="nilai"><span class="nav-icon">📝</span> Input Nilai</a>
       <a class="nav-item" data-page="jadwal"><span class="nav-icon">🗓️</span> Jadwal Kuliah</a>
+      <a class="nav-item" data-page="jadwal-publik"><span class="nav-icon">📌</span> Jadwal Ruangan</a>
+      <a class="nav-item" data-page="status-kuliah"><span class="nav-icon">🟢</span> Status Kuliah</a>
 
       <div class="nav-section-label">Data Master</div>
       <a class="nav-item" data-page="mahasiswa"><span class="nav-icon">🎓</span> Mahasiswa</a>
       <a class="nav-item" data-page="dosen"><span class="nav-icon">🧑‍🏫</span> Dosen</a>
       <a class="nav-item" data-page="staf"><span class="nav-icon">👥</span> Staf</a>
       <a class="nav-item" data-page="matkul"><span class="nav-icon">📚</span> Mata Kuliah</a>
+      <a class="nav-item" data-page="akun-ketua"><span class="nav-icon">🔑</span> Akun Ketua Kelas</a>
     </nav>
     <div class="sidebar-footer">
       <button class="theme-toggle" onclick="toggleTheme()">🌙 Mode Gelap</button>
@@ -242,6 +245,70 @@
       <section class="section">
         <div class="section-header"><div class="section-eyebrow">Akademik</div><h2 class="section-title">Jadwal Kuliah</h2><p class="section-sub">Kelola jadwal mata kuliah per hari, jam, ruangan, dan dosen pengampu</p></div>
         <div id="jadwal-content"></div>
+      </section>
+    </div>
+
+    <!-- PAGE: JADWAL PUBLIK (tampilan pintu ruangan) -->
+    <div class="page" id="page-jadwal-publik">
+      <section class="section">
+        <div class="section-header">
+          <div class="section-eyebrow">Jadwal 1</div>
+          <h2 class="section-title">📌 Jadwal Penggunaan Ruangan</h2>
+          <p class="section-sub">Jadwal mata kuliah Program Studi Administrasi Perkantoran PNUP — Semester Aktif</p>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <select id="jadwal-publik-filter-ruangan" class="filter-select" onchange="renderJadwalPublik()">
+            <option value="all">— Semua Ruangan —</option>
+          </select>
+          <select id="jadwal-publik-filter-kelas" class="filter-select" onchange="renderJadwalPublik()">
+            <option value="all">— Semua Kelas —</option>
+          </select>
+        </div>
+        <div id="jadwal-publik-content"></div>
+      </section>
+    </div>
+
+    <!-- PAGE: STATUS KULIAH (jadwal 2) -->
+    <div class="page" id="page-status-kuliah">
+      <section class="section">
+        <div class="section-header">
+          <div class="section-eyebrow">Jadwal 2</div>
+          <h2 class="section-title">🟢 Status Kehadiran Kuliah</h2>
+          <p class="section-sub">Pantau ruangan mana yang sedang kuliah dan mana yang kosong hari ini</p>
+        </div>
+        <div id="status-kuliah-login-box" style="display:none;max-width:400px;margin:0 auto 24px;">
+          <div class="card"><div class="card-body">
+            <div style="font-weight:800;font-size:15px;margin-bottom:14px;">🔐 Login Ketua Kelas</div>
+            <div class="form-group" style="margin-bottom:12px;">
+              <label class="form-label">Username</label>
+              <input type="text" id="ketua-username" class="form-input" placeholder="Username ketua kelas">
+            </div>
+            <div class="form-group" style="margin-bottom:16px;">
+              <label class="form-label">Password</label>
+              <div class="password-field-wrap">
+                <input type="password" id="ketua-password" class="form-input" placeholder="Password">
+                <button type="button" class="btn-toggle-eye" onclick="togglePasswordVisibility('ketua-password', this)">
+                  <svg class="icon-eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg class="icon-eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+              </div>
+            </div>
+            <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="loginKetua()">🔐 Login sebagai Ketua Kelas</button>
+          </div></div>
+        </div>
+        <div id="ketua-info-bar" style="display:none;background:var(--accent-subtle);border:1px solid var(--accent-border);border-radius:12px;padding:12px 18px;margin-bottom:18px;display:none;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+          <span id="ketua-info-text" style="font-weight:700;color:var(--accent);"></span>
+          <button class="btn btn-ghost btn-sm" onclick="logoutKetua()">Keluar</button>
+        </div>
+        <div id="status-kuliah-content"></div>
+      </section>
+    </div>
+
+    <!-- PAGE: AKUN KETUA KELAS -->
+    <div class="page" id="page-akun-ketua">
+      <section class="section">
+        <div class="section-header"><div class="section-eyebrow">Pengaturan</div><h2 class="section-title">Akun Ketua Kelas</h2><p class="section-sub">Kelola akun login ketua kelas yang bisa mengubah status kehadiran kuliah</p></div>
+        <div id="akun-ketua-content"></div>
       </section>
     </div>
 
@@ -431,6 +498,38 @@
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="closeMatkulModal()">Batal</button>
       <button class="btn btn-primary" onclick="submitMatkul()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AKUN KETUA KELAS -->
+<div class="modal-overlay" id="modal-akun-ketua">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-kt-title">Tambah Akun Ketua Kelas</div>
+      <div class="modal-sub">Akun ini digunakan ketua kelas untuk login di Status Kuliah</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Nama Ketua Kelas <span class="req">*</span></label>
+        <input type="text" id="kt-nama" class="form-input" placeholder="Nama lengkap ketua kelas">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kelas <span class="req">*</span></label>
+        <input type="text" id="kt-kelas" class="form-input" placeholder="Contoh: 3E D4 AN">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username <span class="req">*</span></label>
+        <input type="text" id="kt-username" class="form-input" placeholder="Username untuk login">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Password <span class="req">*</span></label>
+        <input type="text" id="kt-password" class="form-input" placeholder="Password untuk login">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeAkunKetuaModal()">Batal</button>
+      <button class="btn btn-primary" onclick="submitAkunKetua()">💾 Simpan</button>
     </div>
   </div>
 </div>
