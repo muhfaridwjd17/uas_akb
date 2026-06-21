@@ -1736,7 +1736,7 @@ const JAM_SLOTS = ['07:00','07:50','08:40','09:30','10:20','11:10','12:00','13:0
 
 async function renderJadwalPublik() {
   updateTopbar('Jadwal Ruangan', 'Jadwal Penggunaan Ruangan — Prodi Administrasi Perkantoran PNUP');
-  await loadAllData();
+  await loadAllData(true); // paksa reload
   await loadStatusKuliah(); // muat status real-time
 
   const container = document.getElementById('jadwal-publik-content');
@@ -2130,7 +2130,7 @@ let KETUA_SESSION = null;
 
 async function renderStatusKuliah() {
   updateTopbar('Status Kuliah', 'Pantau kehadiran kuliah dan ketersediaan ruangan hari ini');
-  await loadAllData();
+  await loadAllData(true); // paksa reload supaya data ruangan selalu fresh
 
   // Cek session ketua
   const savedSession = localStorage.getItem('ketua_session');
@@ -2153,14 +2153,12 @@ async function renderStatusKuliah() {
   }
 
   await loadStatusKuliah();
-  cekJamOtomatisLokal(); // cek jam saat pertama buka
   drawStatusKuliah();
 
-  // Auto-refresh tiap 60 detik — sinkron dengan trigger server tiap 1 menit
+  // Auto-refresh tiap 60 detik
   if (STATUS_INTERVAL) clearInterval(STATUS_INTERVAL);
   STATUS_INTERVAL = setInterval(async () => {
-    cekJamOtomatisLokal(); // cek jam lokal dulu (instan, tanpa tunggu server)
-    await loadStatusKuliah(); // ambil data terbaru dari server
+    await loadStatusKuliah();
     drawStatusKuliah();
   }, 60000);
 }
