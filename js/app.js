@@ -1821,47 +1821,37 @@ async function renderJadwalPublik() {
       .jp-tooltip {
         display: none;
         position: fixed;
-        z-index: 99999;
-        min-width: 240px;
-        max-width: 280px;
-        border-radius: 12px;
-        padding: 14px 16px;
+        z-index: 999999;
+        min-width: 230px;
+        max-width: 270px;
+        border-radius: 10px;
+        padding: 12px 14px;
         text-align: left;
         pointer-events: none;
-        background: #000d1a;
-        border: 2px solid #334155;
-        box-shadow: 0 0 0 4px #000d1a, 0 20px 40px #000;
+        background: #0a0f1e;
+        border: 1.5px solid #1e293b;
+        opacity: 1 !important;
       }
-      .jp-cell:hover .jp-tooltip { display: block; }
       .jp-tt-title {
-        font-size: 12px; font-weight: 800; margin-bottom: 10px;
-        padding-bottom: 8px; border-bottom: 1px solid #1e293b;
-        color: #f8fafc; letter-spacing: 0.02em;
+        font-size: 11px; font-weight: 700; margin-bottom: 8px;
+        padding-bottom: 7px; border-bottom: 1px solid #1e293b;
+        color: #f1f5f9;
       }
       .jp-tt-row {
-        display: flex; gap: 10px; align-items: flex-start;
-        font-size: 11px; margin-bottom: 6px;
+        display: flex; gap: 8px; align-items: flex-start;
+        font-size: 11px; margin-bottom: 5px;
       }
-      .jp-tt-lbl {
-        flex-shrink: 0; color: #64748b; min-width: 90px; font-weight: 600;
-      }
-      .jp-tt-val { color: #e2e8f0; font-weight: 500; }
-      .jp-sedang .jp-tooltip {
-        background: #001a0a;
-        border: 2px solid #16a34a;
-        box-shadow: 0 0 0 4px #001a0a, 0 20px 40px #000;
-      }
-      .jp-sedang .jp-tt-title { color: #4ade80; border-bottom-color: #166534; }
-      .jp-sedang .jp-tt-lbl  { color: #4ade8088; }
-      .jp-sedang .jp-tt-val  { color: #dcfce7; }
-      .jp-booking .jp-tooltip {
-        background: #000c2e;
-        border: 2px solid #2563eb;
-        box-shadow: 0 0 0 4px #000c2e, 0 20px 40px #000;
-      }
-      .jp-booking .jp-tt-title { color: #60a5fa; border-bottom-color: #1e40af; }
-      .jp-booking .jp-tt-lbl  { color: #60a5fa88; }
-      .jp-booking .jp-tt-val  { color: #dbeafe; }
+      .jp-tt-lbl { flex-shrink: 0; color: #475569; min-width: 85px; font-weight: 600; }
+      .jp-tt-val { color: #e2e8f0; font-weight: 500; line-height: 1.4; }
+      .jp-sedang .jp-tooltip  { background: #021a08; border-color: #16a34a; }
+      .jp-sedang .jp-tt-title { color: #4ade80; border-bottom-color: #14532d; }
+      .jp-sedang .jp-tt-lbl   { color: #166534; }
+      .jp-sedang .jp-tt-val   { color: #bbf7d0; }
+      .jp-booking .jp-tooltip  { background: #020b2e; border-color: #2563eb; }
+      .jp-booking .jp-tt-title { color: #93c5fd; border-bottom-color: #1e3a8a; }
+      .jp-booking .jp-tt-lbl   { color: #1d4ed8; }
+      .jp-booking .jp-tt-val   { color: #bfdbfe; }
+      /* hover ditangani JS */
       /* Cell kosong hover */
       .jp-cell-kosong {
         padding: 6px 4px; border: 1.5px solid var(--border);
@@ -2013,23 +2003,57 @@ async function renderJadwalPublik() {
   html += '</div></div>';
   container.innerHTML = html;
 
-  // Posisi tooltip mengikuti mouse supaya tidak tertimpa konten
-  container.querySelectorAll('.jp-cell').forEach(cell => {
-    const tt = cell.querySelector('.jp-tooltip');
-    if (!tt) return;
-    cell.addEventListener('mouseenter', () => { tt.style.display = 'block'; });
-    cell.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
+  // Tooltip global — satu elemen di body, pindah mengikuti mouse
+  let _globalTT = document.getElementById('jp-global-tooltip');
+  if (!_globalTT) {
+    _globalTT = document.createElement('div');
+    _globalTT.id = 'jp-global-tooltip';
+    _globalTT.style.cssText = [
+      'position:fixed',
+      'z-index:999999',
+      'display:none',
+      'pointer-events:none',
+      'min-width:230px',
+      'max-width:270px',
+      'border-radius:10px',
+      'padding:12px 14px',
+      'font-size:11px',
+      'font-family:var(--font-sans,sans-serif)',
+    ].join(';');
+    document.body.appendChild(_globalTT);
+  }
+
+  container.querySelectorAll('.jp-cell[data-ruangan]').forEach(cell => {
+    const src = cell.querySelector('.jp-tooltip');
+    if (!src) return;
+
+    cell.addEventListener('mouseenter', () => {
+      const isS = cell.classList.contains('jp-sedang');
+      const isB = cell.classList.contains('jp-booking');
+      _globalTT.innerHTML  = src.innerHTML;
+      _globalTT.style.background   = isS ? '#021a08' : isB ? '#020b2e' : '#0a0f1e';
+      _globalTT.style.border       = isS ? '1.5px solid #16a34a' : isB ? '1.5px solid #2563eb' : '1.5px solid #1e293b';
+      _globalTT.style.color        = isS ? '#bbf7d0' : isB ? '#bfdbfe' : '#e2e8f0';
+      _globalTT.style.display      = 'block';
+    });
+
+    cell.addEventListener('mouseleave', () => {
+      _globalTT.style.display = 'none';
+    });
+
     cell.addEventListener('mousemove', e => {
-      const x = e.clientX + 8;
-      const y = e.clientY + 8;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
-      const tw = tt.offsetWidth || 260;
-      const th = tt.offsetHeight || 200;
-      const left = (x + tw + 8 > vw) ? (e.clientX - tw - 8) : x;
-      const top  = (y + th + 8 > vh) ? (e.clientY - th - 8) : y;
-      tt.style.left = left + 'px';
-      tt.style.top  = top  + 'px';
+      const tw = _globalTT.offsetWidth  || 250;
+      const th = _globalTT.offsetHeight || 180;
+      const ox = 12; // offset dari kursor
+      const oy = 12;
+      let left = e.clientX + ox;
+      let top  = e.clientY + oy;
+      if (left + tw > vw - 8) left = e.clientX - tw - ox;
+      if (top  + th > vh - 8) top  = e.clientY - th - oy;
+      _globalTT.style.left = left + 'px';
+      _globalTT.style.top  = top  + 'px';
     });
   });
 
