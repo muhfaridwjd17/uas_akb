@@ -2212,69 +2212,96 @@ function drawStatusKuliah() {
 
   let html = `
     <style>
-      .hs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#1a1a1a;border-radius:16px;overflow:hidden;margin-bottom:24px;border:1px solid #222}
-      .hs{padding:18px 16px;background:#0d0d0d;position:relative}
-      .hs:not(:last-child)::after{content:'';position:absolute;right:0;top:20%;height:60%;width:1px;background:#1e1e1e}
-      .hs-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-      .hs-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px}
-      .hs-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:100px}
-      .hs-num{font-size:30px;font-weight:700;line-height:1;margin-bottom:4px}
-      .hs-lbl{font-size:10px;letter-spacing:.05em;text-transform:uppercase;opacity:.4;color:#fff}
-      .hs.s-green .hs-icon{background:#0d2b1d;color:#34D399}.hs.s-green .hs-num{color:#34D399}.hs.s-green .hs-badge{background:#0d2b1d;color:#34D399}
-      .hs.s-amber .hs-icon{background:#2b1e08;color:#FBBF24}.hs.s-amber .hs-num{color:#FBBF24}.hs.s-amber .hs-badge{background:#2b1e08;color:#FBBF24}
-      .hs.s-gray .hs-icon{background:#1a1a1a;color:#555}.hs.s-gray .hs-num{color:#888}.hs.s-gray .hs-badge{background:#1a1a1a;color:#555}
-      .hs.s-blue .hs-icon{background:#0a1929;color:#60A5FA}.hs.s-blue .hs-num{color:#e0e0e0}.hs.s-blue .hs-badge{background:#0a1929;color:#60A5FA}
-      .rm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:8px}
-      .rc{border-radius:14px;overflow:hidden;border:1px solid #1a1a1a;background:#0a0a0a;position:relative}
-      .rc.dipakai{border-color:#1a4a2e;background:#060f09}
-      .rc.terkunci{border-color:#4a3210;background:#0f0900}
-      .rc-corner{position:absolute;top:0;right:0;width:40px;height:40px;border-radius:0 14px 0 40px}
-      .rc-corner.kosong{background:#111}.rc-corner.dipakai{background:#0d2b1d}.rc-corner.terkunci{background:#2b1e08}
-      .rc-cicon{position:absolute;top:9px;right:9px;font-size:13px}
-      .rc-cicon.kosong{color:#2a2a2a}.rc-cicon.dipakai{color:#34D399}.rc-cicon.terkunci{color:#FBBF24}
-      .rc-body{padding:14px 14px 12px}
-      .rc-name{font-size:14px;font-weight:700;color:#e8e8e8;margin-bottom:2px;margin-top:2px}
-      .rc-tag{display:inline-block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:2px 7px;border-radius:4px;margin-bottom:10px}
-      .rc-tag.kosong{background:#111;color:#333;border:1px solid #1a1a1a}
-      .rc-tag.dipakai{background:#0d2b1d;color:#34D399;border:1px solid #1a4a2e}
-      .rc-tag.terkunci{background:#2b1e08;color:#FBBF24;border:1px solid #4a3210}
-      .rc-info{background:#0d0d0d;border-radius:8px;padding:8px 10px;margin-bottom:10px;border:1px solid #151515;min-height:46px;display:flex;flex-direction:column;justify-content:center}
-      .rc-info.dipakai{background:#061610;border-color:#1a3a20}
-      .rc-info.terkunci{background:#100c00;border-color:#3a2800}
-      .rc-kelas{font-size:10px;font-weight:700;margin-bottom:1px}
-      .rc-kelas.dipakai{color:#34D399}.rc-kelas.terkunci{color:#FBBF24}
-      .rc-matkul{font-size:10px;color:#444}
-      .rc-by{font-size:9px;color:#333;margin-top:2px}
-      .rc-empty{font-size:10px;color:#2a2a2a;text-align:center;width:100%}
-      .rc-footer{display:flex;align-items:center;gap:6px}
-      .spill{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:4px 8px;border-radius:100px;flex-shrink:0;white-space:nowrap}
-      .spill.kosong{background:#0d0d0d;color:#333;border:1px solid #1a1a1a}
-      .spill.dipakai{background:#0d2b1d;color:#34D399;border:1px solid #1a4a2e}
-      .spill.terkunci{background:#2b1e08;color:#FBBF24;border:1px solid #4a3210}
-      .sdot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-      .sdot.kosong{background:#333}.sdot.dipakai{background:#34D399}.sdot.terkunci{background:#FBBF24}
-      .abtn{font-size:10px;font-weight:600;padding:5px 8px;border-radius:7px;cursor:pointer;border:1px solid;flex:1;text-align:center;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-      .abtn.go{background:transparent;color:#34D399;border-color:#1a4a2e}
-      .abtn.stop{background:transparent;color:#F87171;border-color:#3d1515}
-      .abtn.locked{background:transparent;color:#2a2a2a;border-color:#1a1a1a;cursor:not-allowed}
+      @keyframes sk-pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+      .hs-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:24px;}
+      .hs{border-radius:14px;padding:16px 16px 14px;border:1px solid;position:relative;}
+      .hs.s-green{background:#041c0e;border-color:#166534;}
+      .hs.s-amber{background:#1c1200;border-color:#92400e;}
+      .hs.s-gray{background:#111110;border-color:#333331;}
+      .hs.s-blue{background:#040d1c;border-color:#1e3a5f;}
+      .hs-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:12px;}
+      .s-green .hs-icon{background:#0d2e1a;color:#4ade80;}
+      .s-amber .hs-icon{background:#2b1e00;color:#fbbf24;}
+      .s-gray  .hs-icon{background:#1c1c1a;color:#888;}
+      .s-blue  .hs-icon{background:#0a1829;color:#60a5fa;}
+      .hs-badge{position:absolute;top:12px;right:12px;font-size:10px;font-weight:600;padding:2px 8px;border-radius:100px;letter-spacing:.04em;}
+      .s-green .hs-badge{background:#0d2e1a;color:#4ade80;border:1px solid #166534;}
+      .s-amber .hs-badge{background:#2b1e00;color:#fbbf24;border:1px solid #92400e;}
+      .s-gray  .hs-badge{background:#1c1c1a;color:#666;border:1px solid #333;}
+      .s-blue  .hs-badge{background:#0a1829;color:#60a5fa;border:1px solid #1e3a5f;}
+      .hs-num{font-size:32px;font-weight:700;line-height:1;margin-bottom:4px;}
+      .s-green .hs-num{color:#4ade80;}
+      .s-amber .hs-num{color:#fbbf24;}
+      .s-gray  .hs-num{color:#aaa;}
+      .s-blue  .hs-num{color:#e2e8f0;}
+      .hs-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#444;}
+      .rm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:8px;}
+      .rc{border-radius:14px;overflow:hidden;position:relative;transition:transform .15s;}
+      .rc:hover{transform:translateY(-2px);}
+      .rc.kosong {background:#0a0a0a;border:1px solid #1c1c1a;}
+      .rc.dipakai{background:#040f08;border:1px solid #166534;}
+      .rc.terkunci{background:#100d00;border:1px solid #92400e;}
+      .rc-corner{position:absolute;top:0;right:0;width:44px;height:44px;border-radius:0 14px 0 44px;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0 0;font-size:14px;}
+      .rc.kosong  .rc-corner{background:#141412;color:#333;}
+      .rc.dipakai .rc-corner{background:#0d2e1a;color:#4ade80;}
+      .rc.terkunci .rc-corner{background:#2b1e00;color:#fbbf24;}
+      .rc-body{padding:14px 14px 12px;}
+      .rc-name{font-size:15px;font-weight:700;color:#e8e8e8;margin-bottom:4px;margin-top:2px;}
+      .rc-tag{display:inline-block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:4px;margin-bottom:10px;}
+      .rc.kosong  .rc-tag{background:#141412;color:#444;border:1px solid #1c1c1a;}
+      .rc.dipakai .rc-tag{background:#0d2e1a;color:#4ade80;border:1px solid #166534;}
+      .rc.terkunci .rc-tag{background:#2b1e00;color:#fbbf24;border:1px solid #92400e;}
+      .rc-info{border-radius:8px;padding:8px 10px;margin-bottom:10px;border:1px solid;min-height:48px;display:flex;flex-direction:column;justify-content:center;}
+      .rc.kosong  .rc-info{background:#0d0d0b;border-color:#1a1a17;}
+      .rc.dipakai .rc-info{background:#061610;border-color:#1a3a22;}
+      .rc.terkunci .rc-info{background:#100c00;border-color:#3a2e00;}
+      .rc-info-kelas{font-size:10px;font-weight:700;margin-bottom:1px;}
+      .rc.dipakai  .rc-info-kelas{color:#4ade80;}
+      .rc.terkunci .rc-info-kelas{color:#fbbf24;}
+      .rc-info-matkul{font-size:10px;color:#444;}
+      .rc-info-by{font-size:9px;color:#333;margin-top:2px;}
+      .rc-empty{font-size:10px;color:#2a2a2a;text-align:center;width:100%;}
+      .rc-footer{display:flex;align-items:center;gap:6px;}
+      .rc-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:4px 8px;border-radius:100px;flex-shrink:0;}
+      .pill-dot{width:5px;height:5px;border-radius:50%;}
+      .rc.kosong  .rc-pill{background:#111;color:#444;border:1px solid #1c1c1a;}
+      .rc.dipakai .rc-pill{background:#0d2e1a;color:#4ade80;border:1px solid #166534;}
+      .rc.terkunci .rc-pill{background:#2b1e00;color:#fbbf24;border:1px solid #92400e;}
+      .rc.kosong  .pill-dot{background:#333;}
+      .rc.dipakai .pill-dot{background:#4ade80;animation:sk-pulse 2s infinite;}
+      .rc.terkunci .pill-dot{background:#fbbf24;}
+      .abtn{font-size:10px;font-weight:600;padding:5px 8px;border-radius:7px;cursor:pointer;border:1px solid;flex:1;text-align:center;white-space:nowrap;background:transparent;}
+      .abtn.go{color:#4ade80;border-color:#166534;}
+      .abtn.go:hover{background:#0d2e1a;}
+      .abtn.stop{color:#f87171;border-color:#7f1d1d;}
+      .abtn.stop:hover{background:#1c0808;}
+      .abtn.locked{color:#2a2a2a;border-color:#1a1a1a;cursor:not-allowed;}
     </style>
 
     <div class="hs-grid">
       <div class="hs s-green">
-        <div class="hs-top"><div class="hs-icon"><i class="ti ti-building" aria-hidden="true"></i></div><span class="hs-badge">Aktif</span></div>
-        <div class="hs-num">${jmlDipakai}</div><div class="hs-lbl">Sedang dipakai</div>
+        <div class="hs-icon"><i class="ti ti-door-enter" aria-hidden="true"></i></div>
+        <span class="hs-badge">Aktif</span>
+        <div class="hs-num">${jmlDipakai}</div>
+        <div class="hs-lbl">Sedang dipakai</div>
       </div>
       <div class="hs s-amber">
-        <div class="hs-top"><div class="hs-icon"><i class="ti ti-lock" aria-hidden="true"></i></div><span class="hs-badge">Kunci</span></div>
-        <div class="hs-num">${jmlTerkunci}</div><div class="hs-lbl">Terkunci</div>
+        <div class="hs-icon"><i class="ti ti-lock" aria-hidden="true"></i></div>
+        <span class="hs-badge">Kunci</span>
+        <div class="hs-num">${jmlTerkunci}</div>
+        <div class="hs-lbl">Terkunci</div>
       </div>
       <div class="hs s-gray">
-        <div class="hs-top"><div class="hs-icon"><i class="ti ti-door" aria-hidden="true"></i></div><span class="hs-badge">Bebas</span></div>
-        <div class="hs-num">${jmlKosong}</div><div class="hs-lbl">Kosong</div>
+        <div class="hs-icon"><i class="ti ti-door" aria-hidden="true"></i></div>
+        <span class="hs-badge">Bebas</span>
+        <div class="hs-num">${jmlKosong}</div>
+        <div class="hs-lbl">Kosong</div>
       </div>
       <div class="hs s-blue">
-        <div class="hs-top"><div class="hs-icon"><i class="ti ti-building-estate" aria-hidden="true"></i></div><span class="hs-badge">Total</span></div>
-        <div class="hs-num">${semuaRuangan.length}</div><div class="hs-lbl">Semua ruangan</div>
+        <div class="hs-icon"><i class="ti ti-building" aria-hidden="true"></i></div>
+        <span class="hs-badge">Total</span>
+        <div class="hs-num">${semuaRuangan.length}</div>
+        <div class="hs-lbl">Semua ruangan</div>
       </div>
     </div>
 
@@ -2297,22 +2324,21 @@ function drawStatusKuliah() {
         const pillText = isLocked ? 'Terkunci' : isTerpakai ? 'Live' : 'Bebas';
 
         return `<div class="rc ${state}">
-          <div class="rc-corner ${state}"></div>
-          <div class="rc-cicon ${state}"><i class="ti ${cornerIcon}" aria-hidden="true"></i></div>
+          <div class="rc-corner"><i class="ti ${cornerIcon}" aria-hidden="true"></i></div>
           <div class="rc-body">
             <div class="rc-name">${ruangan}</div>
-            <div class="rc-tag ${state}">${tagText}</div>
-            <div class="rc-info ${state}">
+            <div class="rc-tag">${tagText}</div>
+            <div class="rc-info">
               ${isTerpakai ? `
-                <div class="rc-kelas ${state}">${data.kelas||''}</div>
-                <div class="rc-matkul">${data.mataKuliah||''}</div>
-                <div class="rc-by">${data.diklikkOleh||'-'} · ${data.waktuUpdate||''}</div>
+                <div class="rc-info-kelas">${data.kelas||''}</div>
+                <div class="rc-info-matkul">${data.mataKuliah||''}</div>
+                <div class="rc-info-by">${data.diklikkOleh||'-'} · ${data.waktuUpdate||''}</div>
               ` : `<span class="rc-empty">Tersedia untuk digunakan</span>`}
             </div>
             <div class="rc-footer">
-              <span class="spill ${state}"><span class="sdot ${state}"></span>${pillText}</span>
+              <span class="rc-pill"><span class="pill-dot"></span>${pillText}</span>
               ${isLocked
-                ? `<button class="abtn locked" disabled><i class="ti ti-lock" style="font-size:10px" aria-hidden="true"></i> Dikunci</button>`
+                ? `<button class="abtn locked" disabled><i class="ti ti-lock" style="font-size:10px;vertical-align:-1px" aria-hidden="true"></i> Dikunci</button>`
                 : `<button class="abtn ${isTerpakai ? 'stop' : 'go'}" onclick="toggleStatusRuangan('${ruangan}', ${isTerpakai})">
                     ${isTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
                   </button>`
@@ -2323,53 +2349,84 @@ function drawStatusKuliah() {
       }).join('')}
     </div>`;
 
-  // ROSTER JADWAL KELAS KETUA
+  // ROSTER JADWAL KELAS KETUA — dikelompokkan per hari
   const jadwalKelas = STATE.data.jadwal.filter(j => j.Kelas === KETUA_SESSION.kelas);
   if (jadwalKelas.length > 0) {
-    const hariColors = { Senin:'#34D399',Selasa:'#22D3EE',Rabu:'#818CF8',Kamis:'#D4AF37',Jumat:'#F43F5E',Sabtu:'#F97316' };
-    const jadwalUrut = [...jadwalKelas].sort((a,b) => {
-      const hi = HARI_LIST.indexOf(a.Hari) - HARI_LIST.indexOf(b.Hari);
-      return hi !== 0 ? hi : formatJam(a['Jam Mulai']).localeCompare(formatJam(b['Jam Mulai']));
+    const hariColors = {
+      Senin:   { text: '#4ade80', border: '#166534', bg: '#34d39918' },
+      Selasa:  { text: '#67e8f9', border: '#164e63', bg: '#22d3ee18' },
+      Rabu:    { text: '#a5b4fc', border: '#312e81', bg: '#818cf818' },
+      Kamis:   { text: '#fbbf24', border: '#92400e', bg: '#fbbf2418' },
+      Jumat:   { text: '#f87171', border: '#7f1d1d', bg: '#f4375018' },
+      Sabtu:   { text: '#fb923c', border: '#7c2d12', bg: '#f9731618' },
+    };
+
+    // Kelompokkan jadwal per hari
+    const perHari = {};
+    HARI_LIST.forEach(h => { perHari[h] = []; });
+    jadwalKelas.forEach(j => { if (perHari[j.Hari]) perHari[j.Hari].push(j); });
+    // Urutkan setiap hari berdasarkan jam mulai
+    HARI_LIST.forEach(h => {
+      perHari[h].sort((a, b) => formatJam(a['Jam Mulai']).localeCompare(formatJam(b['Jam Mulai'])));
     });
+    // Hanya tampilkan hari yang punya jadwal
+    const hariAda = HARI_LIST.filter(h => perHari[h].length > 0);
 
     html += `
       <div style="margin-top:28px;border-top:1px solid #1a1a1a;padding-top:24px;">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:14px;">
-          Jadwal kelas <span style="color:#34D399;">${KETUA_SESSION.kelas}</span>
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:20px;">
+          Jadwal kelas <span style="color:#4ade80;">${KETUA_SESSION.kelas}</span>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;">
-          ${jadwalUrut.map(j => {
-            const warna = hariColors[j.Hari] || '#34D399';
-            const ruanganData = STATUS_KULIAH_DATA[j.Ruangan] || {};
-            const ruanganTerpakai = ruanganData.status === 'Sedang Dipakai';
-            const isOwner = ruanganTerpakai && ruanganData.diklikkOleh === KETUA_SESSION.nama;
-            const isLocked = ruanganTerpakai && !isOwner;
-            return `<div style="border-radius:12px;padding:14px;border:1px solid ${isLocked ? '#4a3210' : ruanganTerpakai ? '#1a4a2e' : '#1a1a1a'};background:${isLocked ? '#0f0900' : ruanganTerpakai ? '#060f09' : '#0a0a0a'};">
-              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px;">
-                <div>
-                  <div style="font-weight:700;font-size:12px;color:#e8e8e8;">${j['Nama Mata Kuliah']}</div>
-                  <div style="font-size:10px;color:#444;margin-top:2px;">${j['Dosen Pengampu']||'-'}</div>
-                </div>
-                <span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:100px;background:${warna}20;color:${warna};white-space:nowrap;border:1px solid ${warna}40;">${j.Hari}</span>
+
+        ${hariAda.map(hari => {
+          const c = hariColors[hari];
+          return `
+            <div style="margin-bottom:20px;">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+                  padding:4px 12px;border-radius:6px;white-space:nowrap;
+                  background:${c.bg};color:${c.text};border:1px solid ${c.border};">${hari}</span>
+                <div style="flex:1;height:1px;background:linear-gradient(90deg,${c.border},transparent);"></div>
               </div>
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <div>
-                  <div style="font-size:10px;font-family:monospace;font-weight:700;color:${warna};">${formatJam(j['Jam Mulai'])} – ${formatJam(j['Jam Selesai'])}</div>
-                  <div style="font-size:10px;color:#555;margin-top:1px;">📍 ${j.Ruangan}</div>
-                </div>
-                ${isLocked
-                  ? `<span style="padding:5px 10px;border-radius:7px;font-size:10px;font-weight:600;background:transparent;border:1px solid #4a3210;color:#2a2a2a;cursor:not-allowed;">🔒 Dikunci</span>`
-                  : `<button onclick="toggleStatusRuangan('${j.Ruangan}', ${ruanganTerpakai})"
-                      style="padding:5px 12px;border-radius:7px;font-size:10px;font-weight:600;cursor:pointer;
-                        background:transparent;border:1px solid ${ruanganTerpakai ? '#3d1515' : '#1a4a2e'};
-                        color:${ruanganTerpakai ? '#F87171' : '#34D399'};">
-                      ${ruanganTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
-                    </button>`
-                }
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;">
+                ${perHari[hari].map(j => {
+                  const ruanganData = STATUS_KULIAH_DATA[j.Ruangan] || {};
+                  const ruanganTerpakai = ruanganData.status === 'Sedang Dipakai';
+                  const isOwner = ruanganTerpakai && ruanganData.diklikkOleh === KETUA_SESSION.nama;
+                  const isLocked = ruanganTerpakai && !isOwner;
+                  const cardBorder = isLocked ? '#92400e' : ruanganTerpakai ? '#166534' : '#1c1c1a';
+                  const cardBg    = isLocked ? '#100d00' : ruanganTerpakai ? '#040f08' : '#0a0a0a';
+                  const dotColor  = isLocked ? '#fbbf24' : ruanganTerpakai ? '#4ade80' : '#333';
+                  const dotAnim   = (ruanganTerpakai && !isLocked) ? 'animation:sk-pulse 2s infinite;' : '';
+                  return `
+                    <div style="border-radius:12px;padding:14px;background:${cardBg};border:1px solid ${cardBorder};transition:transform .15s;">
+                      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px;">
+                        <div>
+                          <div style="font-weight:700;font-size:12px;color:#e8e8e8;">${j['Nama Mata Kuliah']}</div>
+                          <div style="font-size:10px;color:#444;margin-top:2px;">${j['Dosen Pengampu']||'-'}</div>
+                        </div>
+                        <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px;background:${dotColor};${dotAnim}"></div>
+                      </div>
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                        <div>
+                          <div style="font-size:10px;font-family:monospace;font-weight:700;color:${c.text};">${formatJam(j['Jam Mulai'])} – ${formatJam(j['Jam Selesai'])}</div>
+                          <div style="font-size:10px;color:#555;margin-top:2px;">📍 ${j.Ruangan}</div>
+                        </div>
+                        ${isLocked
+                          ? `<button style="padding:5px 12px;border-radius:7px;font-size:10px;font-weight:600;cursor:not-allowed;background:transparent;border:1px solid #1a1a1a;color:#2a2a2a;white-space:nowrap;">🔒 Dikunci</button>`
+                          : `<button onclick="toggleStatusRuangan('${j.Ruangan}', ${ruanganTerpakai})"
+                              style="padding:5px 12px;border-radius:7px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;
+                                background:transparent;border:1px solid ${ruanganTerpakai ? '#7f1d1d' : '#166534'};
+                                color:${ruanganTerpakai ? '#f87171' : '#4ade80'};">
+                              ${ruanganTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
+                            </button>`
+                        }
+                      </div>
+                    </div>`;
+                }).join('')}
               </div>
             </div>`;
-          }).join('')}
-        </div>
+        }).join('')}
       </div>`;
   }
 
