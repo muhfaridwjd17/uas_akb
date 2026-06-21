@@ -223,7 +223,11 @@ function navigate(page) {
   if (page === 'nilai') renderNilaiPage();
   if (page === 'rapor') renderRaporPage();
   if (page === 'jadwal') renderJadwalPage();
-  if (page === 'jadwal-publik') renderJadwalPublik();
+  if (page === 'jadwal-publik') {
+    renderJadwalPublik();
+    // Update badge langsung setelah render selesai pakai STATUS_KULIAH_DATA yang sudah ada
+    setTimeout(() => updateBadgeJadwalPublik(), 50);
+  }
   if (page === 'status-kuliah') renderStatusKuliah();
   if (page === 'akun-ketua') renderAkunKetuaPage();
   if (page === 'ruangan') renderRuanganPage();
@@ -231,6 +235,8 @@ function navigate(page) {
   document.getElementById('sidebar')?.classList.remove('open');
   document.getElementById('sidebar-overlay')?.classList.remove('open');
   window.scrollTo(0, 0);
+  // Update badge setelah render selesai - pakai data yang sudah di memory
+  setTimeout(() => updateBadgeJadwalPublik(), 100);
 }
 
 // ================================================
@@ -1755,8 +1761,11 @@ const JAM_SLOTS = ['07:00','07:50','08:40','09:30','10:20','11:10','12:00','13:0
 
 async function renderJadwalPublik() {
   updateTopbar('Jadwal Ruangan', 'Jadwal Penggunaan Ruangan — Prodi Administrasi Perkantoran PNUP');
-  await loadAllData(true); // paksa reload
-  await loadStatusKuliah(); // muat status real-time
+  // Pakai data yang sudah ada di memory dulu — render instan
+  // Fetch di background kalau data belum ada
+  if (!STATE.loaded) await loadAllData();
+  // Status kuliah sudah ada dari tab sebelumnya, tidak perlu fetch ulang
+  // Render langsung pakai STATUS_KULIAH_DATA yang sudah ada
 
   const container = document.getElementById('jadwal-publik-content');
   if (!container) return;
@@ -2026,7 +2035,9 @@ async function renderJadwalPublik() {
                  <div style="font-size:9px;color:#64748b;">${sR.jamMulai||''}${sR.jamSelesai?' - '+sR.jamSelesai:''}</div>
                  <div style="font-size:9px;color:#475569;">${sR.namaKetua||''}</div>`
               : `<div style="font-size:10px;color:#374151;margin-top:2px;">Tidak ada aktivitas</div>`;
-            return `<div style="background:${bg};border:1.5px solid ${bdr};border-radius:10px;padding:10px 12px;">
+            return `<div class="jp-cell ${isS?'jp-sedang':isB?'jp-booking':''}"
+              data-ruangan="${namaR}"
+              style="background:${bg};border:1.5px solid ${bdr};border-radius:10px;padding:10px 12px;cursor:default;position:relative;">
               <div style="font-size:12px;font-weight:700;color:var(--text-primary);margin-bottom:4px;">${namaR}</div>
               <div style="font-size:10px;font-weight:700;color:${clr};">${icon} ${label}</div>
               ${sub}
@@ -2442,80 +2453,112 @@ function cekJamOtomatisLokal() {
 
 // Update badge di jadwal publik TANPA rebuild seluruh tabel
 function updateBadgeJadwalPublik() {
-  const area = document.getElementById('jadwal-print-area');
-  if (!area) return;
-
-  // Update semua cell yang punya data-ruangan
-  area.querySelectorAll('.jp-cell[data-ruangan]').forEach(cell => {
+  // Update SEMUA jp-cell di seluruh halaman (roster + section status ruangan)
+  document.querySelectorAll('.jp-cell[data-ruangan]').forEach(cell => {
     const ruangan   = cell.dataset.ruangan;
     const statusD   = STATUS_KULIAH_DATA[ruangan] || {};
     const statusNow = statusD.status || '';
     const isSedang  = statusNow === 'Sedang Dipakai';
     const isBooking = statusNow === 'Dibooking';
 
-    // Update border lengkap semua sisi + background
-    const borderColor = isSedang ? '#16a34a' : isBooking ? '#2563eb' : '';
-    const borderVal   = borderColor ? `2px solid ${borderColor}` : '';
-    cell.style.borderTop    = borderVal;
-    cell.style.borderBottom = borderVal;
-    cell.style.borderLeft   = borderVal;
-    cell.style.borderRight  = borderVal;
-    cell.style.outline      = borderColor ? `1px solid ${borderColor}` : '';
-    cell.style.background   = isSedang ? '#041c0e' : isBooking ? '#040d1c' : '';
+    // Update class untuk tooltip global
+    cell.classList.remove('jp-sedang', 'jp-booking');
+    if (isSedang)  cell.classList.add('jp-sedang');
+    if (isBooking) cell.classList.add('jp-booking');
 
-    // Update badge
+    // Update border + background
+    if (isSedang) {
+      cell.style.borderTop = cell.style.borderBottom =
+      cell.style.borderLeft = cell.style.borderRight = '2px solid #16a34a';
+      cell.style.outline    = '1px solid #16a34a';
+      cell.style.background = '#041c0e';
+    } else if (isBooking) {
+      cell.style.borderTop = cell.style.borderBottom =
+      cell.style.borderLeft = cell.style.borderRight = '2px solid #2563eb';
+      cell.style.outline    = '1px solid #2563eb';
+      cell.style.background = '#040d1c';
+    } else {
+      cell.style.borderTop = cell.style.borderBottom =
+      cell.style.borderLeft = cell.style.borderRight = '';
+      cell.style.outline    = '';
+      cell.style.background = '';
+    }
+
+    // Update badge teks
     const badge = cell.querySelector('.jp-status-badge');
     if (badge) {
       if (isSedang) {
-        badge.style.display = 'inline-block';
-        badge.style.background = '#4ade8025';
-        badge.style.color = '#4ade80';
-        badge.style.border = '1px solid #166534';
-        badge.textContent = '🟢 Sedang Dipakai';
+        badge.style.background = '#4ade8015';
+        badge.style.color      = '#4ade80';
+        badge.style.border     = '1px solid #16a34a';
+        badge.textContent      = '🟢 Sedang Dipakai';
       } else if (isBooking) {
-        badge.style.display = 'inline-block';
-        badge.style.background = '#60a5fa25';
-        badge.style.color = '#60a5fa';
-        badge.style.border = '1px solid #1e3a8a';
-        badge.textContent = '📅 Dibooking';
+        badge.style.background = '#60a5fa15';
+        badge.style.color      = '#60a5fa';
+        badge.style.border     = '1px solid #2563eb';
+        badge.textContent      = '📅 Dibooking';
       } else {
-        badge.style.display = 'inline-block';
-        badge.style.background = 'var(--bg-elevated)';
-        badge.style.color = 'var(--text-muted)';
-        badge.style.border = '1px solid var(--border)';
-        badge.textContent = '⬜ Kosong';
+        badge.style.background = '#1f293740';
+        badge.style.color      = '#6b7280';
+        badge.style.border     = '1px solid #374151';
+        badge.textContent      = '⬜ Kosong';
       }
     }
 
-    // Update tooltip
-    const tt = cell.querySelector('.jp-tooltip');
-    if (tt && (isSedang || isBooking)) {
-      tt.querySelector('.jp-tt-title').textContent = isSedang ? '🟢 Sedang Dipakai' : '📅 Dibooking';
-      const rows = tt.querySelectorAll('.jp-tt-val');
-      if (rows[0]) rows[0].textContent = statusD.mataKuliah || '';
-      if (rows[1]) rows[1].textContent = statusD.dosen || '';
-      if (rows[2]) rows[2].textContent = statusD.kelas || '';
-      if (rows[4]) rows[4].textContent = `${statusD.jamMulai || ''} – ${statusD.jamSelesai || ''}`;
-      if (rows[5]) rows[5].textContent = statusD.namaKetua || '';
-      tt.parentElement?.classList.remove('jp-sedang','jp-booking');
-      tt.parentElement?.classList.add(isSedang ? 'jp-sedang' : 'jp-booking');
+    // Update teks utama di card section status ruangan
+    // (div pertama = nama, div kedua = status label)
+    const statusDiv = cell.querySelector('div:nth-child(2)');
+    if (statusDiv && !cell.querySelector('.jp-status-badge')) {
+      // Ini card section status ruangan (bukan cell tabel)
+      const icon  = isSedang ? '🟢' : isBooking ? '📅' : '⬜';
+      const label = isSedang ? 'Sedang Dipakai' : isBooking ? 'Dibooking' : 'Kosong';
+      const clr   = isSedang ? '#4ade80' : isBooking ? '#60a5fa' : 'var(--text-muted)';
+      statusDiv.style.color = clr;
+      statusDiv.textContent = icon + ' ' + label;
+
+      // Update sub info (matkul, jam, ketua)
+      const subDivs = cell.querySelectorAll('div:nth-child(n+3)');
+      if (subDivs.length > 0) {
+        if (isSedang || isBooking) {
+          if (subDivs[0]) { subDivs[0].style.color = clr; subDivs[0].textContent = statusD.mataKuliah||''; }
+          if (subDivs[1]) { subDivs[1].textContent = (statusD.jamMulai||'')+(statusD.jamSelesai?' - '+statusD.jamSelesai:''); }
+          if (subDivs[2]) { subDivs[2].textContent = statusD.namaKetua||''; }
+        } else {
+          if (subDivs[0]) { subDivs[0].style.color = '#374151'; subDivs[0].textContent = 'Tidak ada aktivitas'; }
+          if (subDivs[1]) subDivs[1].textContent = '';
+          if (subDivs[2]) subDivs[2].textContent = '';
+        }
+      }
+
+      // Update border card
+      if (isSedang) {
+        cell.style.border = '1.5px solid #16a34a';
+        cell.style.background = '#052e16';
+      } else if (isBooking) {
+        cell.style.border = '1.5px solid #2563eb';
+        cell.style.background = '#0f172a';
+      } else {
+        cell.style.border = '1.5px solid var(--border)';
+        cell.style.background = 'var(--bg-elevated)';
+      }
     }
   });
 }
 
 // Update kedua tab sekaligus
 function refreshSemuaTab() {
+  // Selalu update badge dulu — berlaku untuk SEMUA halaman
+  // karena jp-cell bisa ada di halaman manapun
+  updateBadgeJadwalPublik();
+
   // Update Status Kuliah kalau sedang aktif
   if (document.getElementById('page-status-kuliah')?.classList.contains('active')) {
     drawStatusKuliah();
   }
-  // Update Jadwal Ruangan - cukup update badge, tidak perlu rebuild seluruh tabel
+  // Update Jadwal Ruangan kalau sedang aktif tapi belum punya area
   if (document.getElementById('page-jadwal-publik')?.classList.contains('active')) {
-    const area = document.getElementById('jadwal-print-area');
-    if (area) {
-      updateBadgeJadwalPublik(); // update badge instan
-    } else {
-      renderJadwalPublik(); // kalau belum ada, baru render penuh
+    if (!document.getElementById('jadwal-print-area')) {
+      renderJadwalPublik(); // render penuh kalau belum ada
     }
   }
 }
