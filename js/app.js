@@ -2762,14 +2762,33 @@ function drawStatusKuliah() {
         const statusD   = STATUS_KULIAH_DATA[namaR] || {};
         const statusNow = statusD.status || '';
 
-        // Cek jadwal hari ini untuk ruangan ini
-        const jadwalR   = jadwalHariIni[namaR] || [];
-        const adaJadwal = jadwalR.length > 0;
+        // Jadwal hari ini ruangan ini — semua kelas
+        const jadwalRuanganHariIni = jadwalHariIni[namaR] || [];
+
+        // Jadwal khusus kelas ketua yang login
+        const jadwalKelasSendiri = jadwalRuanganHariIni.filter(j => j.Kelas === KETUA_SESSION.kelas);
+        const adaJadwalSendiri   = jadwalKelasSendiri.length > 0;
+
+        // Cek apakah ada jadwal kelas LAIN yang sedang aktif sekarang
+        const jamSkrg = getJamSekarang();
+        const jadwalKelasLainAktif = jadwalRuanganHariIni.find(j =>
+          j.Kelas !== KETUA_SESSION.kelas &&
+          formatJam(j['Jam Mulai']) <= jamSkrg &&
+          formatJam(j['Jam Selesai']) > jamSkrg
+        );
+
+        // isLocked: HANYA terkunci kalau ketua lain sudah benar-benar klik Mulai/Booking
+        // Kalau kelas lain ada jadwal tapi belum klik apapun → TIDAK terkunci, bisa booking
+        const isLocked = (statusNow === 'Sedang Dipakai' || statusNow === 'Dibooking')
+          && statusD.namaKetua
+          && statusD.namaKetua !== KETUA_SESSION.nama;
+
+        // Pakai jadwal kelas sendiri untuk tampilan card
+        const jadwalR   = adaJadwalSendiri ? jadwalKelasSendiri : [];
+        const adaJadwal = adaJadwalSendiri;
 
         // Tentukan state
         let state, tagText, pillText;
-        const isLocked = (statusNow === 'Sedang Dipakai' || statusNow === 'Dibooking')
-                      && statusD.namaKetua && statusD.namaKetua !== KETUA_SESSION.nama;
 
         if (isLocked) {
           state = 'terkunci'; tagText = 'Dikunci'; pillText = 'Terkunci';
@@ -2814,7 +2833,19 @@ function drawStatusKuliah() {
             <div class="rc-info-dosen">${jadwalR[0]['Dosen Pengampu']||'-'}</div>
             <div class="rc-info-jam" style="margin-top:5px;">${formatJam(jadwalR[0]['Jam Mulai'])} – ${formatJam(jadwalR[0]['Jam Selesai'])}</div>`;
         } else {
-          infoHTML = `<span class="rc-empty">Tidak ada jadwal</span>`;
+          // Cek jadwal kelas lain di ruangan ini hari ini
+          const jadwalKelasLainHariIni = jadwalRuanganHariIni.filter(j => j.Kelas !== KETUA_SESSION.kelas);
+          if (jadwalKelasLainHariIni.length > 0) {
+            // Ada jadwal kelas lain tapi ruangan belum dipakai → bisa booking
+            const jkl = jadwalKelasLainHariIni[0];
+            infoHTML = `
+              <div class="rc-info-label" style="color:#6b7280;font-size:8px;">JADWAL KELAS LAIN (BELUM DIPAKAI)</div>
+              <div class="rc-info-matkul" style="color:#9ca3af;font-size:11px;">${jkl['Nama Mata Kuliah']}</div>
+              <div class="rc-info-dosen" style="color:#6b7280;">${jkl['Kelas']} · ${formatJam(jkl['Jam Mulai'])} – ${formatJam(jkl['Jam Selesai'])}</div>
+              <div style="font-size:9px;color:#4ade8088;margin-top:3px;">✓ Ruangan bebas, bisa dibooking</div>`;
+          } else {
+            infoHTML = '<span class="rc-empty">Tidak ada jadwal</span>';
+          }
         }
 
         // Corner icon
@@ -2831,14 +2862,20 @@ function drawStatusKuliah() {
         // Tombol aksi
         let btnHTML = '';
         if (isLocked) {
-          btnHTML = `<button class="abtn locked" disabled>🔒 Dikunci</button>`;
+          // Ruangan sudah diklik Mulai Kuliah / Booking oleh ketua lain
+          btnHTML = `<button class="abtn locked" disabled>🔒 Dikunci oleh ${statusD.namaKetua||'ketua lain'}</button>`;
         } else if (statusNow === 'Sedang Dipakai') {
+          // Ketua ini sendiri yang sedang pakai
           btnHTML = `<button class="abtn stop" onclick="aksiRuangan('selesai','${namaR}')">⏹ Selesai</button>`;
         } else if (statusNow === 'Dibooking') {
+          // Ketua ini sendiri yang booking
           btnHTML = `<button class="abtn stop" onclick="aksiRuangan('batalBooking','${namaR}')">✕ Batalkan</button>`;
         } else if (adaJadwal) {
+          // Ada jadwal kelas sendiri → Mulai Kuliah (dan bisa juga Booking)
           btnHTML = `<button class="abtn kuliah" onclick="aksiRuangan('mulaiKuliah','${namaR}')">▶ Mulai Kuliah</button>`;
         } else {
+          // Tidak ada jadwal kelas sendiri → Booking
+          // Termasuk kalau kelas lain ada jadwal tapi belum klik Mulai → tetap bisa booking
           btnHTML = `<button class="abtn booking" onclick="aksiRuangan('booking','${namaR}')">📅 Booking</button>`;
         }
 
