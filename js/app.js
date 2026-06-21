@@ -1873,34 +1873,71 @@ async function renderJadwalPublik() {
         <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">Semester Aktif Tahun Akademik ${new Date().getFullYear()}/${new Date().getFullYear()+1}</div>
       </div>`;
 
-  kelasList.forEach(kelas => {
-    const jadwalKelas = filtered.filter(j => j.Kelas === kelas);
+
+  // Ambil SEMUA ruangan dari master ruangan
+  let semuaRuanganMaster = STATE.data.ruangan.map(r => r['Nama Ruangan']).filter(Boolean).sort();
+  if (semuaRuanganMaster.length === 0) {
+    semuaRuanganMaster = [...new Set(jadwal.map(j => j.Ruangan).filter(Boolean))].sort();
+  }
+
+  // Filter berdasarkan filter ruangan yang dipilih
+  const ruanganTampil = fRuangan === 'all'
+    ? semuaRuanganMaster
+    : semuaRuanganMaster.filter(r => r === fRuangan);
+
+  // Kelompokkan jadwal per ruangan per hari
+  const jadwalPerRuangan = {};
+  ruanganTampil.forEach(r => { jadwalPerRuangan[r] = {}; });
+  jadwal.forEach(j => {
+    if (!j.Ruangan || !j.Hari) return;
+    if (fKelas !== 'all' && j.Kelas !== fKelas) return;
+    if (!jadwalPerRuangan[j.Ruangan]) jadwalPerRuangan[j.Ruangan] = {};
+    if (!jadwalPerRuangan[j.Ruangan][j.Hari]) jadwalPerRuangan[j.Ruangan][j.Hari] = [];
+    jadwalPerRuangan[j.Ruangan][j.Hari].push(j);
+  });
+
+  ruanganTampil.forEach(namaRuangan => {
+    const jadwalRuangan = jadwalPerRuangan[namaRuangan] || {};
+    const statusR   = STATUS_KULIAH_DATA[namaRuangan] || {};
+    const statusNow = statusR.status || '';
+    const isSedang  = statusNow === 'Sedang Dipakai';
+    const isBooking = statusNow === 'Dibooking';
+
+    const headerBg    = isSedang ? '#052e16' : isBooking ? '#0f172a' : 'var(--accent-subtle)';
+    const headerColor = isSedang ? '#4ade80'  : isBooking ? '#60a5fa' : 'var(--accent)';
+    const headerBdr   = isSedang ? '#16a34a'  : isBooking ? '#2563eb' : 'var(--accent)';
+    const statusLabel = isSedang
+      ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#4ade8020;color:#4ade80;border:1px solid #16a34a;margin-left:10px;">&#x1F7E2; Sedang Dipakai</span>`
+      : isBooking
+      ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:#60a5fa20;color:#60a5fa;border:1px solid #2563eb;margin-left:10px;">&#x1F4C5; Dibooking</span>`
+      : `<span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:#1f293740;color:#6b7280;border:1px solid #374151;margin-left:10px;">&#x2B1C; Kosong</span>`;
 
     html += `
-      <div style="margin-bottom:40px;">
-        <div style="font-weight:800;font-size:15px;margin-bottom:12px;padding:10px 16px;background:var(--accent-subtle);border-left:4px solid var(--accent);border-radius:0 10px 10px 0;color:var(--accent);">
-          🎓 Kelas: ${kelas}
+      <div style="margin-bottom:32px;">
+        <div style="font-weight:800;font-size:15px;margin-bottom:12px;padding:10px 16px;
+          background:${headerBg};border-left:4px solid ${headerBdr};
+          border-radius:0 10px 10px 0;color:${headerColor};
+          display:flex;align-items:center;">
+          &#x1F4CD; ${namaRuangan}${statusLabel}
         </div>
         <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:900px;table-layout:auto;">
           <thead>
             <tr>
-              <th style="padding:10px 14px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:11px;font-weight:800;min-width:80px;letter-spacing:0.5px;">HARI</th>
-              ${SLOTS.map(s => s.istirahat ?
-                `<th style="padding:6px 4px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:8px;font-weight:600;color:var(--text-muted);min-width:36px;max-width:36px;"><div style="writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:1px;">IST</div><div style="font-size:7px;margin-top:2px;">${s.mulai}</div></th>` :
-                `<th style="padding:8px 6px;text-align:center;border:1.5px solid var(--border);background:var(--bg-elevated);font-size:13px;font-weight:900;min-width:80px;"><div>${s.no}</div><div style="font-size:8px;font-weight:400;color:var(--text-muted);margin-top:3px;">${s.mulai}–${s.selesai}</div></th>`
+              <th style="padding:10px 14px;text-align:center;border:1px solid var(--border);background:var(--bg-elevated);font-size:11px;font-weight:800;min-width:80px;">HARI</th>
+              ${SLOTS.map(s => s.istirahat
+                ? `<th style="padding:6px 2px;text-align:center;border:1px solid var(--border);background:var(--bg-elevated);font-size:8px;color:var(--text-muted);min-width:24px;max-width:24px;"><div style="writing-mode:vertical-rl;transform:rotate(180deg);">IST</div></th>`
+                : `<th style="padding:8px 6px;text-align:center;border:1px solid var(--border);background:var(--bg-elevated);font-size:12px;font-weight:900;min-width:90px;"><div>${s.no}</div><div style="font-size:8px;font-weight:400;color:var(--text-muted);margin-top:2px;">${s.mulai}&ndash;${s.selesai}</div></th>`
               ).join('')}
             </tr>
           </thead>
           <tbody>
             ${['Senin','Selasa','Rabu','Kamis','Jumat'].map(hari => {
-              const jadwalHari = jadwalKelas.filter(j => j.Hari === hari);
+              const jadwalHari = jadwalRuangan[hari] || [];
               const warna = hariWarna[hari] || 'var(--accent)';
-
-              // Build sel per slot — tandai slot mana yang sudah dipakai (colspan)
               const rendered = new Array(SLOTS.length).fill(null);
               jadwalHari.forEach(j => {
-                const mulai = formatJam(j['Jam Mulai']);
+                const mulai   = formatJam(j['Jam Mulai']);
                 const selesai = formatJam(j['Jam Selesai']);
                 let startIdx = -1, endIdx = -1;
                 SLOTS.forEach((s, i) => {
@@ -1915,24 +1952,16 @@ async function renderJadwalPublik() {
                   }
                 }
                 if (endIdx === -1 || endIdx < startIdx) endIdx = startIdx;
-
-                // Isi setiap slot dalam range, lewati istirahat (biarkan kosong)
-                let currentStart = startIdx;
-                let spanCount = 0;
+                let currentStart = startIdx, spanCount = 0;
                 for (let x = startIdx; x <= endIdx; x++) {
                   if (SLOTS[x].istirahat) {
-                    // Simpan segment sebelum istirahat
                     if (spanCount > 0) {
                       rendered[currentStart] = { jadwal: j, span: spanCount, warna };
                       for (let y = currentStart + 1; y < currentStart + spanCount; y++) rendered[y] = 'skip';
                     }
-                    spanCount = 0;
-                    currentStart = x + 1;
-                  } else {
-                    spanCount++;
-                  }
+                    spanCount = 0; currentStart = x + 1;
+                  } else { spanCount++; }
                 }
-                // Simpan segment terakhir
                 if (spanCount > 0) {
                   rendered[currentStart] = { jadwal: j, span: spanCount, warna };
                   for (let y = currentStart + 1; y < currentStart + spanCount; y++) rendered[y] = 'skip';
@@ -1940,57 +1969,46 @@ async function renderJadwalPublik() {
               });
 
               return `<tr>
-                <td style="padding:10px 14px;border:1.5px solid var(--border);font-weight:800;font-size:12px;color:${warna};background:${warna}10;white-space:nowrap;text-align:center;">${hari}</td>
+                <td style="padding:8px 12px;border:1px solid var(--border);font-weight:800;font-size:12px;color:${warna};background:${warna}10;white-space:nowrap;text-align:center;">${hari}</td>
                 ${SLOTS.map((s, i) => {
                   if (rendered[i] === 'skip') return '';
-                  if (s.istirahat) {
-                    return `<td style="padding:2px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;"><span style="font-size:8px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
-                  }
-                  if (rendered[i] === null) {
-                    return `<td style="padding:4px;border:1px solid var(--border);background:transparent;"></td>`;
-                  }
+                  if (s.istirahat) return `<td style="padding:2px;border:1px solid var(--border);background:var(--bg-elevated);text-align:center;"><span style="font-size:8px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
+                  if (rendered[i] === null) return `<td style="padding:4px;border:1px solid var(--border);"></td>`;
+
                   const { jadwal: j, span } = rendered[i];
-                  const statusR   = STATUS_KULIAH_DATA[j.Ruangan] || {};
-                  const statusNow = statusR.status || '';
-                  const isSedang  = statusNow === 'Sedang Dipakai';
-                  const isBooking = statusNow === 'Dibooking';
+                  const sR   = STATUS_KULIAH_DATA[j.Ruangan] || {};
+                  const sNow = sR.status || '';
+                  const isS  = sNow === 'Sedang Dipakai';
+                  const isB  = sNow === 'Dibooking';
+                  const bColor = isS ? '#4ade80' : isB ? '#60a5fa' : '#6b7280';
+                  const bBg    = isS ? '#4ade8015' : isB ? '#60a5fa15' : '#1f293740';
+                  const bBdr   = isS ? '#16a34a' : isB ? '#2563eb' : '#374151';
+                  const bTxt   = isS ? '&#x1F7E2; Sedang Dipakai' : isB ? '&#x1F4C5; Dibooking' : '&#x2B1C; Kosong';
+                  const nmMK   = (isS||isB) ? (sR.mataKuliah||j['Nama Mata Kuliah']) : j['Nama Mata Kuliah'];
+                  const nmDsn  = (isS||isB) ? (sR.dosen||j['Dosen Pengampu']||'') : (j['Dosen Pengampu']||'');
+                  const nmKls  = (isS||isB) ? (sR.kelas||j['Kelas']||'') : (j['Kelas']||'');
 
-                  const statusBadge = isSedang
-                    ? `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;background:#4ade8025;color:#4ade80;border:1px solid #166534;">🟢 Sedang Dipakai</div>`
-                    : isBooking
-                    ? `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;background:#60a5fa25;color:#60a5fa;border:1px solid #1e3a8a;">📅 Dibooking</div>`
-                    : `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--bg-elevated);color:var(--text-muted);">⬜ Kosong</div>`;
+                  const ttHTML = `<div class="jp-tooltip">
+                    <div class="jp-tt-title">${isS?'&#x1F7E2; Sedang Dipakai':isB?'&#x1F4C5; Dibooking':'&#x1F4CB; Jadwal'}</div>
+                    <div class="jp-tt-row"><span class="jp-tt-lbl">Mata Kuliah</span><span class="jp-tt-val">${nmMK}</span></div>
+                    <div class="jp-tt-row"><span class="jp-tt-lbl">Dosen</span><span class="jp-tt-val">${nmDsn}</span></div>
+                    <div class="jp-tt-row"><span class="jp-tt-lbl">Kelas</span><span class="jp-tt-val">${nmKls}</span></div>
+                    <div class="jp-tt-row"><span class="jp-tt-lbl">Jam</span><span class="jp-tt-val">${sR.jamMulai||formatJam(j['Jam Mulai'])} - ${sR.jamSelesai||formatJam(j['Jam Selesai'])}</span></div>
+                    ${(isS||isB)?`<div class="jp-tt-row"><span class="jp-tt-lbl">Ketua</span><span class="jp-tt-val">${sR.namaKetua||'-'}</span></div>`:''}
+                  </div>`;
 
-                  // Tooltip hover untuk booking/sedang dipakai
-                  const tooltipContent = (isSedang || isBooking) ? `
-                    <div class="jp-tooltip">
-                      <div class="jp-tt-title">${isSedang ? '🟢 Sedang Dipakai' : '📅 Dibooking'}</div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">Mata Kuliah</span><span class="jp-tt-val">${statusR.mataKuliah || j['Nama Mata Kuliah']}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">Dosen</span><span class="jp-tt-val">${statusR.dosen || j['Dosen Pengampu'] || '-'}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">Kelas</span><span class="jp-tt-val">${statusR.kelas || j['Kelas'] || '-'}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">Ruangan</span><span class="jp-tt-val">${j.Ruangan}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">Jam</span><span class="jp-tt-val">${statusR.jamMulai || formatJam(j['Jam Mulai'])} – ${statusR.jamSelesai || formatJam(j['Jam Selesai'])}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">Ketua Kelas</span><span class="jp-tt-val">${statusR.namaKetua || '-'}</span></div>
-                    </div>` : '';
-
-                  const namaMK   = (isSedang||isBooking) ? (statusR.mataKuliah||j['Nama Mata Kuliah']) : j['Nama Mata Kuliah'];
-                  const namaDsn  = (isSedang||isBooking) ? (statusR.dosen||j['Dosen Pengampu']||'') : (j['Dosen Pengampu']||'');
-                  const badgeColor = isSedang ? '#4ade80' : isBooking ? '#60a5fa' : '#6b7280';
-                  const badgeBg    = isSedang ? '#4ade8015' : isBooking ? '#60a5fa15' : '#1f2937';
-                  const badgeBdr   = isSedang ? '#16a34a' : isBooking ? '#2563eb' : '#374151';
-                  const badgeTxt   = isSedang ? '🟢 Sedang Dipakai' : isBooking ? '📅 Dibooking' : '⬜ Kosong';
-                  return `<td colspan="${span}" class="jp-cell ${isSedang?'jp-sedang':isBooking?'jp-booking':''}"
+                  return `<td colspan="${span}" class="jp-cell ${isS?'jp-sedang':isB?'jp-booking':''}"
                     data-ruangan="${j.Ruangan||''}"
                     style="padding:8px 6px;
-                      border:${isSedang?'2px solid #16a34a':isBooking?'2px solid #2563eb':'1px solid var(--border)'};
-                      outline:${isSedang?'1px solid #16a34a':isBooking?'1px solid #2563eb':'none'};
-                      background:${isSedang?'#041c0e':isBooking?'#040d1c':warna+'10'};
+                      border:${isS?'2px solid #16a34a':isB?'2px solid #2563eb':'1px solid var(--border)'};
+                      outline:${isS?'1px solid #16a34a':isB?'1px solid #2563eb':'none'};
+                      background:${isS?'#041c0e':isB?'#040d1c':warna+'10'};
                       vertical-align:middle;text-align:center;position:relative;">
-                    ${tooltipContent}
-                    <div style="font-weight:700;font-size:11px;color:var(--text-primary);line-height:1.35;margin-bottom:3px;">${namaMK}</div>
-                    <div style="font-size:9.5px;color:var(--text-muted);margin-bottom:4px;">${namaDsn}</div>
-                    <div style="font-size:9px;font-weight:600;color:${warna};padding:1px 5px;background:${warna}18;border-radius:3px;display:inline-block;margin-bottom:3px;">📍 ${j.Ruangan||''}</div>
-                    <br><span class="jp-status-badge" style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:2px;background:${badgeBg};color:${badgeColor};border:1px solid ${badgeBdr};">${badgeTxt}</span>
+                    ${ttHTML}
+                    <div style="font-weight:700;font-size:11px;color:var(--text-primary);line-height:1.35;margin-bottom:2px;">${nmMK}</div>
+                    <div style="font-size:9px;color:var(--text-muted);margin-bottom:2px;">${nmDsn}</div>
+                    <div style="font-size:9px;color:#64748b;margin-bottom:3px;">${nmKls}</div>
+                    <span class="jp-status-badge" style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${bBg};color:${bColor};border:1px solid ${bBdr};">${bTxt}</span>
                   </td>`;
                 }).join('')}
               </tr>`;
