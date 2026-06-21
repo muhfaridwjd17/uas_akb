@@ -1815,6 +1815,48 @@ async function renderJadwalPublik() {
   }
 
   let html = `
+    <style>
+      .jp-cell { transition: filter 0.15s; }
+      .jp-cell:hover { filter: brightness(1.15); }
+      .jp-tooltip {
+        display: none;
+        position: absolute;
+        z-index: 999;
+        top: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        min-width: 220px;
+        background: #0d0d0d;
+        border: 1px solid #222;
+        border-radius: 12px;
+        padding: 12px 14px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        text-align: left;
+        pointer-events: none;
+      }
+      .jp-cell:hover .jp-tooltip { display: block; }
+      .jp-tt-title {
+        font-size: 11px; font-weight: 800; margin-bottom: 8px;
+        padding-bottom: 6px; border-bottom: 1px solid #222;
+        color: #e8e8e8;
+      }
+      .jp-tt-row {
+        display: flex; gap: 8px; align-items: flex-start;
+        font-size: 10px; margin-bottom: 5px; color: #aaa;
+      }
+      .jp-tt-lbl {
+        flex-shrink: 0; color: #555; min-width: 90px;
+      }
+      .jp-sedang .jp-tooltip { border-color: #166534; }
+      .jp-booking .jp-tooltip { border-color: #1e3a8a; }
+      /* Cell kosong hover */
+      .jp-cell-kosong {
+        padding: 6px 4px; border: 1.5px solid var(--border);
+        text-align: center; vertical-align: middle;
+        transition: background 0.15s; position: relative;
+      }
+      .jp-cell-kosong:hover { background: var(--bg-elevated); }
+    </style>
     <div style="display:flex;justify-content:flex-end;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
       <button onclick="printJadwal()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg-surface);color:var(--text-primary);font-size:12px;font-weight:700;cursor:pointer;">🖨️ Print</button>
       <button onclick="downloadJadwalPDF()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;border-radius:10px;border:1.5px solid #F43F5E;background:rgba(244,63,94,0.08);color:#F43F5E;font-size:12px;font-weight:700;cursor:pointer;">📄 Download PDF</button>
@@ -1902,7 +1944,7 @@ async function renderJadwalPublik() {
                     return `<td style="padding:2px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;"><span style="font-size:8px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
                   }
                   if (rendered[i] === null) {
-                    return `<td style="padding:6px 4px;border:1.5px solid var(--border);text-align:center;vertical-align:middle;">
+                    return `<td class="jp-cell-kosong">
                       <span style="font-size:9px;color:var(--text-muted);font-weight:500;">Kosong</span>
                     </td>`;
                   }
@@ -1911,15 +1953,32 @@ async function renderJadwalPublik() {
                   const statusNow = statusR.status || '';
                   const isSedang  = statusNow === 'Sedang Dipakai';
                   const isBooking = statusNow === 'Dibooking';
-                  const cellBg    = isSedang ? '#166534' : isBooking ? '#1e3a8a' : warna;
+
                   const statusBadge = isSedang
                     ? `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;background:#4ade8025;color:#4ade80;border:1px solid #166534;">🟢 Sedang Dipakai</div>`
                     : isBooking
                     ? `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;background:#60a5fa25;color:#60a5fa;border:1px solid #1e3a8a;">📅 Dibooking</div>`
                     : `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--bg-elevated);color:var(--text-muted);">⬜ Kosong</div>`;
-                  return `<td colspan="${span}" style="padding:10px 8px;border:1.5px solid ${isSedang ? '#166534' : isBooking ? '#1e3a8a' : 'var(--border)'};background:${isSedang ? '#041c0e' : isBooking ? '#040d1c' : warna+'12'};vertical-align:middle;text-align:center;">
-                    <div style="font-weight:800;font-size:11px;color:var(--text-primary);line-height:1.4;margin-bottom:4px;">${j['Nama Mata Kuliah']}</div>
-                    <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">${j['Dosen Pengampu']||''}</div>
+
+                  // Tooltip hover untuk booking/sedang dipakai
+                  const tooltipContent = (isSedang || isBooking) ? `
+                    <div class="jp-tooltip">
+                      <div class="jp-tt-title">${isSedang ? '🟢 Sedang Dipakai' : '📅 Dibooking'}</div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">📚 Mata Kuliah</span><span>${statusR.mataKuliah || j['Nama Mata Kuliah']}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">👤 Dosen</span><span>${statusR.dosen || j['Dosen Pengampu'] || '-'}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">🎓 Kelas</span><span>${statusR.kelas || j['Kelas'] || '-'}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">📍 Ruangan</span><span>${j.Ruangan}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">⏰ Jam</span><span>${statusR.jamMulai || formatJam(j['Jam Mulai'])} – ${statusR.jamSelesai || formatJam(j['Jam Selesai'])}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">👤 Ketua</span><span>${statusR.namaKetua || '-'}</span></div>
+                    </div>` : '';
+
+                  return `<td colspan="${span}" class="jp-cell ${isSedang ? 'jp-sedang' : isBooking ? 'jp-booking' : ''}"
+                    style="padding:10px 8px;border:1.5px solid ${isSedang ? '#166534' : isBooking ? '#1e3a8a' : 'var(--border)'};
+                    background:${isSedang ? '#041c0e' : isBooking ? '#040d1c' : warna+'12'};
+                    vertical-align:middle;text-align:center;position:relative;">
+                    ${tooltipContent}
+                    <div style="font-weight:800;font-size:11px;color:var(--text-primary);line-height:1.4;margin-bottom:4px;">${(isSedang || isBooking) ? (statusR.mataKuliah || j['Nama Mata Kuliah']) : j['Nama Mata Kuliah']}</div>
+                    <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">${(isSedang || isBooking) ? (statusR.dosen || j['Dosen Pengampu'] || '') : (j['Dosen Pengampu'] || '')}</div>
                     <div style="font-size:10px;font-weight:700;color:${warna};padding:1px 6px;background:${warna}20;border-radius:4px;display:inline-block;">📍 ${j.Ruangan||''}</div>
                     ${statusBadge}
                   </td>`;
