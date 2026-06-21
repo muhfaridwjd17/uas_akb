@@ -1737,6 +1737,7 @@ const JAM_SLOTS = ['07:00','07:50','08:40','09:30','10:20','11:10','12:00','13:0
 async function renderJadwalPublik() {
   updateTopbar('Jadwal Ruangan', 'Jadwal Penggunaan Ruangan — Prodi Administrasi Perkantoran PNUP');
   await loadAllData();
+  await loadStatusKuliah(); // muat status real-time
 
   const container = document.getElementById('jadwal-publik-content');
   if (!container) return;
@@ -1900,12 +1901,31 @@ async function renderJadwalPublik() {
                   if (s.istirahat) {
                     return `<td style="padding:2px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;"><span style="font-size:8px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
                   }
-                  if (rendered[i] === null) return `<td style="padding:4px;border:1.5px solid var(--border);"></td>`;
+                  if (rendered[i] === null) {
+                    // Cek apakah ruangan di slot ini sedang dibooking
+                    const ruanganSlot  = Object.keys(STATUS_KULIAH_DATA).find(r => {
+                      const sd = STATUS_KULIAH_DATA[r];
+                      if (sd?.status !== 'Dibooking' && sd?.status !== 'Sedang Kuliah') return false;
+                      return sd?.jamMulai <= s.mulai && sd?.jamSelesai > s.mulai;
+                    });
+                    return `<td style="padding:4px;border:1.5px solid var(--border);"></td>`;
+                  }
                   const { jadwal: j, span } = rendered[i];
-                  return `<td colspan="${span}" style="padding:10px 8px;border:1.5px solid var(--border);background:${warna}12;vertical-align:middle;text-align:center;">
+                  const statusR   = STATUS_KULIAH_DATA[j.Ruangan] || {};
+                  const statusNow = statusR.status || '';
+                  const isSedang  = statusNow === 'Sedang Kuliah';
+                  const isBooking = statusNow === 'Dibooking';
+                  const cellBg    = isSedang ? '#166534' : isBooking ? '#1e3a8a' : warna;
+                  const statusBadge = isSedang
+                    ? `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;background:#4ade8025;color:#4ade80;border:1px solid #166534;">🟢 Sedang Kuliah</div>`
+                    : isBooking
+                    ? `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;background:#60a5fa25;color:#60a5fa;border:1px solid #1e3a8a;">📅 Dibooking</div>`
+                    : '';
+                  return `<td colspan="${span}" style="padding:10px 8px;border:1.5px solid ${isSedang ? '#166534' : isBooking ? '#1e3a8a' : 'var(--border)'};background:${isSedang ? '#041c0e' : isBooking ? '#040d1c' : warna+'12'};vertical-align:middle;text-align:center;">
                     <div style="font-weight:800;font-size:11px;color:var(--text-primary);line-height:1.4;margin-bottom:4px;">${j['Nama Mata Kuliah']}</div>
                     <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">${j['Dosen Pengampu']||''}</div>
                     <div style="font-size:10px;font-weight:700;color:${warna};padding:1px 6px;background:${warna}20;border-radius:4px;display:inline-block;">📍 ${j.Ruangan||''}</div>
+                    ${statusBadge}
                   </td>`;
                 }).join('')}
               </tr>`;
@@ -2210,12 +2230,19 @@ function drawStatusKuliah() {
   }
 
   // Ambil semua ruangan dari data master ruangan
-  const semuaRuangan = [...STATE.data.ruangan].sort((a,b) =>
+  // Ambil dari master ruangan, fallback ke ruangan dari data jadwal
+  let semuaRuangan = [...STATE.data.ruangan].sort((a,b) =>
     String(a['Nama Ruangan']).localeCompare(String(b['Nama Ruangan']))
   );
 
+  // Fallback: kalau master ruangan kosong, ambil dari data jadwal
   if (semuaRuangan.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🚪</div><div class="empty-state-title">Belum ada ruangan</div><div class="empty-state-text">Tambahkan ruangan terlebih dahulu di menu Ruangan</div></div>`;
+    const ruanganDariJadwal = [...new Set(STATE.data.jadwal.map(j => j.Ruangan).filter(Boolean))].sort();
+    semuaRuangan = ruanganDariJadwal.map(r => ({ ID: r, 'Nama Ruangan': r, Keterangan: '' }));
+  }
+
+  if (semuaRuangan.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🚪</div><div class="empty-state-title">Belum ada ruangan</div><div class="empty-state-text">Tambahkan ruangan di menu Ruangan atau tambahkan jadwal kuliah terlebih dahulu</div></div>`;
     return;
   }
 
