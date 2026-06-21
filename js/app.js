@@ -2133,14 +2133,16 @@ async function renderStatusKuliah() {
   }
 
   await loadStatusKuliah();
+  cekJamOtomatisLokal(); // cek jam saat pertama buka
   drawStatusKuliah();
 
-  // Auto-refresh setiap 30 detik dan auto-reset berdasarkan jam
+  // Auto-refresh tiap 60 detik — sinkron dengan trigger server tiap 1 menit
   if (STATUS_INTERVAL) clearInterval(STATUS_INTERVAL);
   STATUS_INTERVAL = setInterval(async () => {
-    await loadStatusKuliah();
+    cekJamOtomatisLokal(); // cek jam lokal dulu (instan, tanpa tunggu server)
+    await loadStatusKuliah(); // ambil data terbaru dari server
     drawStatusKuliah();
-  }, 30000);
+  }, 60000);
 }
 
 async function loadStatusKuliah() {
