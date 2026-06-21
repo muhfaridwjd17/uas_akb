@@ -1828,9 +1828,9 @@ async function renderJadwalPublik() {
         padding: 14px 16px;
         text-align: left;
         pointer-events: none;
-        background: #0f172a !important;
-        border: 1.5px solid #334155 !important;
-        outline: 3px solid #0f172a;
+        background: #000d1a;
+        border: 2px solid #334155;
+        box-shadow: 0 0 0 4px #000d1a, 0 20px 40px #000;
       }
       .jp-cell:hover .jp-tooltip { display: block; }
       .jp-tt-title {
@@ -1847,17 +1847,17 @@ async function renderJadwalPublik() {
       }
       .jp-tt-val { color: #e2e8f0; font-weight: 500; }
       .jp-sedang .jp-tooltip {
-        background: #052e16 !important;
-        border: 1.5px solid #16a34a !important;
-        outline: 3px solid #052e16;
+        background: #001a0a;
+        border: 2px solid #16a34a;
+        box-shadow: 0 0 0 4px #001a0a, 0 20px 40px #000;
       }
       .jp-sedang .jp-tt-title { color: #4ade80; border-bottom-color: #166534; }
       .jp-sedang .jp-tt-lbl  { color: #4ade8088; }
       .jp-sedang .jp-tt-val  { color: #dcfce7; }
       .jp-booking .jp-tooltip {
-        background: #0c1445 !important;
-        border: 1.5px solid #2563eb !important;
-        outline: 3px solid #0c1445;
+        background: #000c2e;
+        border: 2px solid #2563eb;
+        box-shadow: 0 0 0 4px #000c2e, 0 20px 40px #000;
       }
       .jp-booking .jp-tt-title { color: #60a5fa; border-bottom-color: #1e40af; }
       .jp-booking .jp-tt-lbl  { color: #60a5fa88; }
@@ -2014,14 +2014,16 @@ async function renderJadwalPublik() {
     cell.addEventListener('mouseenter', () => { tt.style.display = 'block'; });
     cell.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
     cell.addEventListener('mousemove', e => {
-      const x = e.clientX + 14;
-      const y = e.clientY + 14;
+      const x = e.clientX + 8;
+      const y = e.clientY + 8;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const tw = tt.offsetWidth || 260;
       const th = tt.offsetHeight || 200;
-      tt.style.left = (x + tw > vw ? x - tw - 28 : x) + 'px';
-      tt.style.top  = (y + th > vh ? y - th - 28 : y) + 'px';
+      const left = (x + tw + 8 > vw) ? (e.clientX - tw - 8) : x;
+      const top  = (y + th + 8 > vh) ? (e.clientY - th - 8) : y;
+      tt.style.left = left + 'px';
+      tt.style.top  = top  + 'px';
     });
   });
 }
@@ -2241,13 +2243,18 @@ async function renderStatusKuliah() {
   await loadStatusKuliah();
   drawStatusKuliah();
 
-  // Auto-refresh tiap 60 detik + cek jam lokal tiap 30 detik
+  // Timer presisi sudah handle perubahan jam — ini hanya fallback + sync server
   if (STATUS_INTERVAL) clearInterval(STATUS_INTERVAL);
-  STATUS_INTERVAL = setInterval(async () => {
-    cekJamOtomatisLokal(); // cek jam lokal dulu (instan)
-    await loadStatusKuliah(); // ambil data terbaru dari server
+  STATUS_INTERVAL = setInterval(() => {
+    cekJamOtomatisLokal(); // fallback jaga-jaga
+  }, 30000);
+
+  // Sync data dari server tiap 20 detik
+  if (window._syncInterval) clearInterval(window._syncInterval);
+  window._syncInterval = setInterval(async () => {
+    await loadStatusKuliah(); // ini yang pasang timer baru jika ada booking baru
     drawStatusKuliah();
-  }, 30000); // tiap 30 detik supaya lebih responsif
+  }, 20000);
 }
 
 async function loadStatusKuliah() {
@@ -2265,7 +2272,11 @@ async function loadStatusKuliah() {
       const text = await res.text();
       if (!text) continue;
       const json = JSON.parse(text);
-      if (json.status === 'success') { STATUS_KULIAH_DATA = json.data || {}; return; }
+      if (json.status === 'success') {
+        STATUS_KULIAH_DATA = json.data || {};
+        pasangSemuaTimer(); // pasang timer presisi setelah data masuk
+        return;
+      }
     } catch(e) { continue; }
   }
 }
@@ -2302,22 +2313,93 @@ function formatJam(jam) {
 
 
 // ================================================
-// CEK JAM OTOMATIS DI FRONTEND
+// TIMER PRESISI — tembak tepat di jam mulai/selesai
 // ================================================
+const _timers = {}; // simpan semua timer aktif
+
+// Konversi "HH:MM" ke milidetik dari sekarang
+function msHingga(jamStr) {
+  if (!jamStr || jamStr.length < 5) return -1;
+  const [hh, mm] = jamStr.split(':').map(Number);
+  const now  = new Date();
+  const target = new Date(now);
+  target.setHours(hh, mm, 0, 0);
+  return target - now; // bisa negatif kalau sudah lewat
+}
+
+// Pasang timer presisi untuk satu ruangan
+function pasangTimerRuangan(ruangan) {
+  const d = STATUS_KULIAH_DATA[ruangan];
+  if (!d || !d.jamMulai || !d.jamSelesai) return;
+
+  // Bersihkan timer lama
+  if (_timers[ruangan + '_mulai'])   clearTimeout(_timers[ruangan + '_mulai']);
+  if (_timers[ruangan + '_selesai']) clearTimeout(_timers[ruangan + '_selesai']);
+
+  const msMulai   = msHingga(d.jamMulai);
+  const msSelesai = msHingga(d.jamSelesai);
+
+  // Timer JAM MULAI — tembak tepat saat jam mulai
+  if (d.status === 'Dibooking' && msMulai >= 0) {
+    _timers[ruangan + '_mulai'] = setTimeout(() => {
+      if (!STATUS_KULIAH_DATA[ruangan]) return;
+      STATUS_KULIAH_DATA[ruangan].status = 'Sedang Dipakai';
+      showToast(`🟢 ${ruangan} — Kuliah dimulai! (${d.mataKuliah})`, 'success');
+      apiPost('setStatusRuangan', {
+        ruangan, statusBaru: 'Sedang Dipakai',
+        mataKuliah: d.mataKuliah, dosen: d.dosen,
+        jamMulai: d.jamMulai, jamSelesai: d.jamSelesai,
+        kelas: d.kelas, namaKetua: d.namaKetua
+      });
+      drawStatusKuliah();
+      // Setelah mulai, pasang timer selesai
+      pasangTimerSelesai(ruangan);
+    }, msMulai);
+  }
+
+  // Timer JAM SELESAI — tembak tepat saat jam selesai
+  if ((d.status === 'Sedang Dipakai' || d.status === 'Dibooking') && msSelesai >= 0) {
+    pasangTimerSelesai(ruangan);
+  }
+}
+
+function pasangTimerSelesai(ruangan) {
+  const d = STATUS_KULIAH_DATA[ruangan];
+  if (!d || !d.jamSelesai) return;
+  if (_timers[ruangan + '_selesai']) clearTimeout(_timers[ruangan + '_selesai']);
+
+  const msSelesai = msHingga(d.jamSelesai);
+  if (msSelesai < 0) return; // sudah lewat
+
+  _timers[ruangan + '_selesai'] = setTimeout(() => {
+    const snap = STATUS_KULIAH_DATA[ruangan];
+    if (!snap) return;
+    const namaKetua = snap.namaKetua || '-';
+    const matkul    = snap.mataKuliah || '';
+    STATUS_KULIAH_DATA[ruangan] = {};
+    showToast(`⬜ ${ruangan} — Selesai (${matkul})`, 'info');
+    apiPost('resetStatusRuangan', { ruangan, namaKetua });
+    drawStatusKuliah();
+    delete _timers[ruangan + '_mulai'];
+    delete _timers[ruangan + '_selesai'];
+  }, msSelesai);
+}
+
+// Panggil ini setiap STATUS_KULIAH_DATA diperbarui
+function pasangSemuaTimer() {
+  Object.keys(STATUS_KULIAH_DATA).forEach(r => pasangTimerRuangan(r));
+}
+
+// Tetap ada cek fallback tiap 30 detik untuk jaga-jaga
 function cekJamOtomatisLokal() {
   const jamSekarang = getJamSekarang();
   let adaPerubahan = false;
-
   Object.keys(STATUS_KULIAH_DATA).forEach(ruangan => {
     const d = STATUS_KULIAH_DATA[ruangan];
     if (!d || !d.jamMulai || !d.jamSelesai) return;
-
-    // Dibooking + jam mulai sudah tiba → Sedang Dipakai
     if (d.status === 'Dibooking' && jamSekarang >= d.jamMulai && jamSekarang < d.jamSelesai) {
       STATUS_KULIAH_DATA[ruangan].status = 'Sedang Dipakai';
       adaPerubahan = true;
-      showToast(`🟢 ${ruangan} — Kuliah dimulai! (${d.mataKuliah})`, 'success');
-      // Beritahu server
       apiPost('setStatusRuangan', {
         ruangan, statusBaru: 'Sedang Dipakai',
         mataKuliah: d.mataKuliah, dosen: d.dosen,
@@ -2325,17 +2407,13 @@ function cekJamOtomatisLokal() {
         kelas: d.kelas, namaKetua: d.namaKetua
       });
     }
-
-    // Sedang Dipakai/Dibooking + jam selesai sudah lewat → Kosong
     if ((d.status === 'Sedang Dipakai' || d.status === 'Dibooking') && jamSekarang >= d.jamSelesai) {
+      const namaKetua = d.namaKetua || '-';
       STATUS_KULIAH_DATA[ruangan] = {};
       adaPerubahan = true;
-      showToast(`⬜ ${ruangan} — Kuliah selesai (${d.jamSelesai})`, 'info');
-      // Beritahu server
-      apiPost('resetStatusRuangan', { ruangan, namaKetua: d.namaKetua || '-' });
+      apiPost('resetStatusRuangan', { ruangan, namaKetua });
     }
   });
-
   if (adaPerubahan) drawStatusKuliah();
 }
 
@@ -2739,6 +2817,7 @@ async function submitBooking(namaR) {
   });
   document.getElementById('bk-modal-wrap')?.remove();
   showToast(`✅ ${namaR} berhasil dibooking!`, 'success');
+  pasangTimerRuangan(namaR); // pasang timer presisi langsung setelah booking
   drawStatusKuliah();
 }
 
