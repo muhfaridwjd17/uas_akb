@@ -1986,6 +1986,7 @@ async function renderJadwalPublik() {
                     </div>` : '';
 
                   return `<td colspan="${span}" class="jp-cell ${isSedang ? 'jp-sedang' : isBooking ? 'jp-booking' : ''}"
+                    data-ruangan="${j.Ruangan||''}"
                     style="padding:10px 8px;border:1.5px solid ${isSedang ? '#166534' : isBooking ? '#1e3a8a' : 'var(--border)'};
                     background:${isSedang ? '#041c0e' : isBooking ? '#040d1c' : warna+'12'};
                     vertical-align:middle;text-align:center;position:relative;">
@@ -1993,7 +1994,12 @@ async function renderJadwalPublik() {
                     <div style="font-weight:800;font-size:11px;color:var(--text-primary);line-height:1.4;margin-bottom:4px;">${(isSedang || isBooking) ? (statusR.mataKuliah || j['Nama Mata Kuliah']) : j['Nama Mata Kuliah']}</div>
                     <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">${(isSedang || isBooking) ? (statusR.dosen || j['Dosen Pengampu'] || '') : (j['Dosen Pengampu'] || '')}</div>
                     <div style="font-size:10px;font-weight:700;color:${warna};padding:1px 6px;background:${warna}20;border-radius:4px;display:inline-block;">📍 ${j.Ruangan||''}</div>
-                    ${statusBadge}
+                    <div class="jp-status-badge" style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;
+                      background:${isSedang ? '#4ade8025' : isBooking ? '#60a5fa25' : 'var(--bg-elevated)'};
+                      color:${isSedang ? '#4ade80' : isBooking ? '#60a5fa' : 'var(--text-muted)'};
+                      border:1px solid ${isSedang ? '#166534' : isBooking ? '#1e3a8a' : 'var(--border)'};">
+                      ${isSedang ? '🟢 Sedang Dipakai' : isBooking ? '📅 Dibooking' : '⬜ Kosong'}
+                    </div>
                   </td>`;
                 }).join('')}
               </tr>`;
@@ -2425,15 +2431,77 @@ function cekJamOtomatisLokal() {
   if (adaPerubahan) drawStatusKuliah();
 }
 
+// Update badge di jadwal publik TANPA rebuild seluruh tabel
+function updateBadgeJadwalPublik() {
+  const area = document.getElementById('jadwal-print-area');
+  if (!area) return;
+
+  // Update semua cell yang punya data-ruangan
+  area.querySelectorAll('.jp-cell[data-ruangan]').forEach(cell => {
+    const ruangan   = cell.dataset.ruangan;
+    const statusD   = STATUS_KULIAH_DATA[ruangan] || {};
+    const statusNow = statusD.status || '';
+    const isSedang  = statusNow === 'Sedang Dipakai';
+    const isBooking = statusNow === 'Dibooking';
+
+    // Update border & background cell
+    cell.style.border      = `1.5px solid ${isSedang ? '#16a34a' : isBooking ? '#2563eb' : 'var(--border)'}`;
+    cell.style.background  = isSedang ? '#041c0e' : isBooking ? '#040d1c' : '';
+
+    // Update badge
+    const badge = cell.querySelector('.jp-status-badge');
+    if (badge) {
+      if (isSedang) {
+        badge.style.display = 'inline-block';
+        badge.style.background = '#4ade8025';
+        badge.style.color = '#4ade80';
+        badge.style.border = '1px solid #166534';
+        badge.textContent = '🟢 Sedang Dipakai';
+      } else if (isBooking) {
+        badge.style.display = 'inline-block';
+        badge.style.background = '#60a5fa25';
+        badge.style.color = '#60a5fa';
+        badge.style.border = '1px solid #1e3a8a';
+        badge.textContent = '📅 Dibooking';
+      } else {
+        badge.style.display = 'inline-block';
+        badge.style.background = 'var(--bg-elevated)';
+        badge.style.color = 'var(--text-muted)';
+        badge.style.border = '1px solid var(--border)';
+        badge.textContent = '⬜ Kosong';
+      }
+    }
+
+    // Update tooltip
+    const tt = cell.querySelector('.jp-tooltip');
+    if (tt && (isSedang || isBooking)) {
+      tt.querySelector('.jp-tt-title').textContent = isSedang ? '🟢 Sedang Dipakai' : '📅 Dibooking';
+      const rows = tt.querySelectorAll('.jp-tt-val');
+      if (rows[0]) rows[0].textContent = statusD.mataKuliah || '';
+      if (rows[1]) rows[1].textContent = statusD.dosen || '';
+      if (rows[2]) rows[2].textContent = statusD.kelas || '';
+      if (rows[4]) rows[4].textContent = `${statusD.jamMulai || ''} – ${statusD.jamSelesai || ''}`;
+      if (rows[5]) rows[5].textContent = statusD.namaKetua || '';
+      tt.parentElement?.classList.remove('jp-sedang','jp-booking');
+      tt.parentElement?.classList.add(isSedang ? 'jp-sedang' : 'jp-booking');
+    }
+  });
+}
+
 // Update kedua tab sekaligus
 function refreshSemuaTab() {
   // Update Status Kuliah kalau sedang aktif
   if (document.getElementById('page-status-kuliah')?.classList.contains('active')) {
     drawStatusKuliah();
   }
-  // Update Jadwal Ruangan kalau sedang aktif
+  // Update Jadwal Ruangan - cukup update badge, tidak perlu rebuild seluruh tabel
   if (document.getElementById('page-jadwal-publik')?.classList.contains('active')) {
-    renderJadwalPublik();
+    const area = document.getElementById('jadwal-print-area');
+    if (area) {
+      updateBadgeJadwalPublik(); // update badge instan
+    } else {
+      renderJadwalPublik(); // kalau belum ada, baru render penuh
+    }
   }
 }
 
