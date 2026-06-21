@@ -2026,6 +2026,14 @@ async function renderJadwalPublik() {
       tt.style.top  = top  + 'px';
     });
   });
+
+  // Auto-refresh jadwal publik tiap 20 detik untuk sinkron dengan status kuliah
+  if (window._jadwalPubInterval) clearInterval(window._jadwalPubInterval);
+  window._jadwalPubInterval = setInterval(async () => {
+    if (!document.getElementById('page-jadwal-publik')?.classList.contains('active')) return;
+    await loadStatusKuliah();
+    renderJadwalPublik();
+  }, 20000);
 }
 
 // ================================================
@@ -2351,7 +2359,7 @@ function pasangTimerRuangan(ruangan) {
         jamMulai: d.jamMulai, jamSelesai: d.jamSelesai,
         kelas: d.kelas, namaKetua: d.namaKetua
       });
-      drawStatusKuliah();
+      refreshSemuaTab(); // update kedua tab
       // Setelah mulai, pasang timer selesai
       pasangTimerSelesai(ruangan);
     }, msMulai);
@@ -2379,7 +2387,7 @@ function pasangTimerSelesai(ruangan) {
     STATUS_KULIAH_DATA[ruangan] = {};
     showToast(`⬜ ${ruangan} — Selesai (${matkul})`, 'info');
     apiPost('resetStatusRuangan', { ruangan, namaKetua });
-    drawStatusKuliah();
+    refreshSemuaTab(); // update kedua tab
     delete _timers[ruangan + '_mulai'];
     delete _timers[ruangan + '_selesai'];
   }, msSelesai);
@@ -2415,6 +2423,18 @@ function cekJamOtomatisLokal() {
     }
   });
   if (adaPerubahan) drawStatusKuliah();
+}
+
+// Update kedua tab sekaligus
+function refreshSemuaTab() {
+  // Update Status Kuliah kalau sedang aktif
+  if (document.getElementById('page-status-kuliah')?.classList.contains('active')) {
+    drawStatusKuliah();
+  }
+  // Update Jadwal Ruangan kalau sedang aktif
+  if (document.getElementById('page-jadwal-publik')?.classList.contains('active')) {
+    renderJadwalPublik();
+  }
 }
 
 function drawStatusKuliah() {
@@ -2736,13 +2756,13 @@ async function aksiRuangan(aksi, namaR) {
     STATUS_KULIAH_DATA[namaR] = { status:'Sedang Dipakai', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama, waktuUpdate:getJamSekarang() };
     await apiPost('setStatusRuangan', { ruangan:namaR, statusBaru:'Sedang Dipakai', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama });
     showToast(`✅ ${namaR} — Sedang Dipakai`, 'success');
-    drawStatusKuliah();
+    refreshSemuaTab();
 
   } else if (aksi === 'selesai' || aksi === 'batalBooking') {
     STATUS_KULIAH_DATA[namaR] = {};
     await apiPost('resetStatusRuangan', { ruangan:namaR, namaKetua:KETUA_SESSION.nama });
     showToast(`⬜ ${namaR} — ${aksi==='selesai' ? 'Kuliah selesai' : 'Booking dibatalkan'}`, 'info');
-    drawStatusKuliah();
+    refreshSemuaTab();
 
   } else if (aksi === 'booking') {
     tampilModalBooking(namaR);
@@ -2818,7 +2838,7 @@ async function submitBooking(namaR) {
   document.getElementById('bk-modal-wrap')?.remove();
   showToast(`✅ ${namaR} berhasil dibooking!`, 'success');
   pasangTimerRuangan(namaR); // pasang timer presisi langsung setelah booking
-  drawStatusKuliah();
+  refreshSemuaTab(); // update kedua tab langsung
 }
 
 async function resetSemuaStatusRuangan() {
