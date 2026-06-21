@@ -481,7 +481,7 @@ function closeMahasiswaModal() {
   STATE.editingId = null;
 }
 
-async function submitMahasiswa() {
+function submitMahasiswa() {
   const nim = document.getElementById('mhs-nim').value.trim();
   const nama = document.getElementById('mhs-nama').value.trim();
   const kelas = document.getElementById('mhs-kelas').value.trim();
@@ -493,25 +493,25 @@ async function submitMahasiswa() {
   const payload = { nim, nama, kelas, angkatan, status };
   if (STATE.editingId) {
     payload.id = STATE.editingId;
-    await apiPost('editMahasiswa', payload);
     const idx = STATE.data.mahasiswa.findIndex(m => m.ID === STATE.editingId);
     if (idx > -1) STATE.data.mahasiswa[idx] = { ...STATE.data.mahasiswa[idx], NIM: nim, Nama: nama, Kelas: kelas, Angkatan: angkatan, Status: status };
     showToast('✅ Data mahasiswa berhasil diupdate', 'success');
+    apiPost('editMahasiswa', payload); // fire-and-forget
   } else {
     const tempId = 'TEMP-' + Date.now();
-    await apiPost('addMahasiswa', payload);
+    apiPost('addMahasiswa', payload); // fire-and-forget
     STATE.data.mahasiswa.push({ ID: tempId, NIM: nim, Nama: nama, Kelas: kelas, Angkatan: angkatan, Status: status, 'Tanggal Daftar': new Date().toISOString() });
     showToast('✅ Mahasiswa berhasil ditambahkan', 'success');
   }
   closeMahasiswaModal();
   renderMahasiswaTable();
-  setTimeout(() => loadAllData(true), 1500);
+  // loadAllData di background sudah tidak diperlukan
 }
 
-async function hapusMahasiswa(id) {
+function hapusMahasiswa(id) {
   if (!confirm('Yakin ingin menghapus data mahasiswa ini? Data nilai terkait TIDAK ikut terhapus otomatis.')) return;
-  await apiPost('deleteMahasiswa', { id });
   STATE.data.mahasiswa = STATE.data.mahasiswa.filter(m => m.ID !== id);
+  apiPost('deleteMahasiswa', { id }); // fire-and-forget
   showToast('🗑️ Mahasiswa berhasil dihapus', 'warning');
   renderMahasiswaTable();
 }
@@ -587,7 +587,7 @@ function closeDosenModal() {
   STATE.editingId = null;
 }
 
-async function submitDosen() {
+function submitDosen() {
   const nidn = document.getElementById('dsn-nidn').value.trim();
   const nama = document.getElementById('dsn-nama').value.trim();
   const jabatan = document.getElementById('dsn-jabatan').value.trim();
@@ -597,25 +597,25 @@ async function submitDosen() {
   const payload = { nidn, nama, jabatan };
   if (STATE.editingId) {
     payload.id = STATE.editingId;
-    await apiPost('editDosen', payload);
     const idx = STATE.data.dosen.findIndex(d => d.ID === STATE.editingId);
     if (idx > -1) STATE.data.dosen[idx] = { ...STATE.data.dosen[idx], NIDN: nidn, Nama: nama, Jabatan: jabatan };
     showToast('✅ Data dosen berhasil diupdate', 'success');
+    apiPost('editDosen', payload); // fire-and-forget
   } else {
     const tempId = 'TEMP-' + Date.now();
-    await apiPost('addDosen', payload);
+    apiPost('addDosen', payload); // fire-and-forget
     STATE.data.dosen.push({ ID: tempId, NIDN: nidn, Nama: nama, Jabatan: jabatan, 'Tanggal Daftar': new Date().toISOString() });
     showToast('✅ Dosen berhasil ditambahkan', 'success');
   }
   closeDosenModal();
   renderDosenTable();
-  setTimeout(() => loadAllData(true), 1500);
+  // loadAllData di background sudah tidak diperlukan
 }
 
-async function hapusDosen(id) {
+function hapusDosen(id) {
   if (!confirm('Yakin ingin menghapus data dosen ini?')) return;
-  await apiPost('deleteDosen', { id });
   STATE.data.dosen = STATE.data.dosen.filter(d => d.ID !== id);
+  apiPost('deleteDosen', { id }); // fire-and-forget
   showToast('🗑️ Dosen berhasil dihapus', 'warning');
   renderDosenTable();
 }
@@ -689,7 +689,7 @@ function closeStafModal() {
   STATE.editingId = null;
 }
 
-async function submitStaf() {
+function submitStaf() {
   const nama = document.getElementById('stf-nama').value.trim();
   const jabatan = document.getElementById('stf-jabatan').value.trim();
 
@@ -698,25 +698,25 @@ async function submitStaf() {
   const payload = { nama, jabatan };
   if (STATE.editingId) {
     payload.id = STATE.editingId;
-    await apiPost('editStaf', payload);
     const idx = STATE.data.staf.findIndex(s => s.ID === STATE.editingId);
     if (idx > -1) STATE.data.staf[idx] = { ...STATE.data.staf[idx], Nama: nama, Jabatan: jabatan };
     showToast('✅ Data staf berhasil diupdate', 'success');
+    apiPost('editStaf', payload); // fire-and-forget
   } else {
     const tempId = 'TEMP-' + Date.now();
-    await apiPost('addStaf', payload);
+    apiPost('addStaf', payload); // fire-and-forget
     STATE.data.staf.push({ ID: tempId, Nama: nama, Jabatan: jabatan, 'Tanggal Daftar': new Date().toISOString() });
     showToast('✅ Staf berhasil ditambahkan', 'success');
   }
   closeStafModal();
   renderStafTable();
-  setTimeout(() => loadAllData(true), 1500);
+  // loadAllData di background sudah tidak diperlukan
 }
 
-async function hapusStaf(id) {
+function hapusStaf(id) {
   if (!confirm('Yakin ingin menghapus data staf ini?')) return;
-  await apiPost('deleteStaf', { id });
   STATE.data.staf = STATE.data.staf.filter(s => s.ID !== id);
+  apiPost('deleteStaf', { id }); // fire-and-forget
   showToast('🗑️ Staf berhasil dihapus', 'warning');
   renderStafTable();
 }
@@ -829,7 +829,7 @@ function closeMatkulModal() {
   STATE.editingId = null;
 }
 
-async function submitMatkul() {
+function submitMatkul() {
   const kode = document.getElementById('mk-kode').value.trim();
   const namaMatkul = document.getElementById('mk-nama').value.trim();
   const semester = document.getElementById('mk-semester').value.trim();
@@ -843,25 +843,25 @@ async function submitMatkul() {
   const payload = { kode, namaMatkul, semester, kelas, dosenPengampu };
   if (STATE.editingId) {
     payload.id = STATE.editingId;
-    await apiPost('editMataKuliah', payload);
     const idx = STATE.data.mataKuliah.findIndex(m => m.ID === STATE.editingId);
     if (idx > -1) STATE.data.mataKuliah[idx] = { ...STATE.data.mataKuliah[idx], Kode: kode, 'Nama Mata Kuliah': namaMatkul, Semester: semester, Kelas: kelas, 'Dosen Pengampu': dosenPengampu };
     showToast('✅ Data mata kuliah berhasil diupdate', 'success');
+    apiPost('editMataKuliah', payload); // fire-and-forget
   } else {
     const tempId = 'TEMP-' + Date.now();
-    await apiPost('addMataKuliah', payload);
+    apiPost('addMataKuliah', payload); // fire-and-forget
     STATE.data.mataKuliah.push({ ID: tempId, Kode: kode, 'Nama Mata Kuliah': namaMatkul, Semester: semester, Kelas: kelas, 'Dosen Pengampu': dosenPengampu, 'Tanggal Dibuat': new Date().toISOString() });
     showToast('✅ Mata kuliah berhasil ditambahkan', 'success');
   }
   closeMatkulModal();
   renderMatkulTable();
-  setTimeout(() => loadAllData(true), 1500);
+  // loadAllData di background sudah tidak diperlukan
 }
 
-async function hapusMatkul(id) {
+function hapusMatkul(id) {
   if (!confirm('Yakin ingin menghapus data mata kuliah ini?')) return;
-  await apiPost('deleteMataKuliah', { id });
   STATE.data.mataKuliah = STATE.data.mataKuliah.filter(m => m.ID !== id);
+  apiPost('deleteMataKuliah', { id }); // fire-and-forget
   showToast('🗑️ Mata kuliah berhasil dihapus', 'warning');
   renderMatkulTable();
 }
@@ -1004,7 +1004,7 @@ function updatePreviewNilai() {
   document.getElementById('preview-bobot').style.color = hasil.grade.color;
 }
 
-async function submitNilai() {
+function submitNilai() {
   const mhsSelect = document.getElementById('nl-mahasiswa');
   const mkSelect = document.getElementById('nl-matkul');
   const nim = mhsSelect.value;
@@ -1023,7 +1023,7 @@ async function submitNilai() {
 
   const hasil = hitungSkorPreview(tugas, praktik, uts, uas, absen);
   const payload = { nim, namaMahasiswa, kodeMk, namaMatkul, semester, tugas, praktik, uts, uas, absen };
-  await apiPost('addNilai', payload);
+  apiPost('addNilai', payload); // fire-and-forget
 
   STATE.data.nilai.push({
     ID: 'TEMP-' + Date.now(), 'NIM Mahasiswa': nim, 'Nama Mahasiswa': namaMahasiswa,
@@ -1039,7 +1039,7 @@ async function submitNilai() {
   ['nl-tugas','nl-praktik','nl-uts','nl-uas','nl-absen'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('nilai-preview-box').style.display = 'none';
   renderNilaiTable();
-  setTimeout(() => loadAllData(true), 1500);
+  // loadAllData di background sudah tidak diperlukan
 }
 
 function applyNilaiFilter() { renderNilaiTable(); }
@@ -1093,10 +1093,10 @@ function renderNilaiTable() {
     </div>`;
 }
 
-async function hapusNilai(id) {
+function hapusNilai(id) {
   if (!confirm('Yakin ingin menghapus data nilai ini? IPS dan IPK mahasiswa terkait akan berubah.')) return;
-  await apiPost('deleteNilai', { id });
   STATE.data.nilai = STATE.data.nilai.filter(n => n.ID !== id);
+  apiPost('deleteNilai', { id }); // fire-and-forget
   showToast('🗑️ Nilai berhasil dihapus', 'warning');
   renderNilaiTable();
 }
@@ -1680,7 +1680,7 @@ function closeJadwalModal() {
   STATE.editingId = null;
 }
 
-async function submitJadwal() {
+function submitJadwal() {
   const mkSelect = document.getElementById('jadwal-matkul');
   const kodeMk = mkSelect.value;
   const namaMatkulOpt = mkSelect.selectedOptions[0];
@@ -1704,26 +1704,26 @@ async function submitJadwal() {
 
   if (STATE.editingId) {
     payload.id = STATE.editingId;
-    await apiPost('editJadwal', payload);
     const idx = STATE.data.jadwal.findIndex(j => j.ID === STATE.editingId);
     if (idx > -1) STATE.data.jadwal[idx] = { ...STATE.data.jadwal[idx], 'Kode MK': kodeMk, 'Nama Mata Kuliah': namaMatkul, Hari: hari, Semester: semester, Kelas: kelas, 'Jam Mulai': jamMulai, 'Jam Selesai': jamSelesai, Ruangan: ruangan, 'Dosen Pengampu': dosen };
+    apiPost('editJadwal', payload); // fire-and-forget
     showToast('✅ Jadwal berhasil diupdate', 'success');
   } else {
     const tempId = 'TEMP-' + Date.now();
-    await apiPost('addJadwal', payload);
+    apiPost('addJadwal', payload); // fire-and-forget
     STATE.data.jadwal.push({ ID: tempId, 'Kode MK': kodeMk, 'Nama Mata Kuliah': namaMatkul, Hari: hari, Semester: semester, Kelas: kelas, 'Jam Mulai': jamMulai, 'Jam Selesai': jamSelesai, Ruangan: ruangan, 'Dosen Pengampu': dosen });
     showToast('✅ Jadwal berhasil ditambahkan', 'success');
   }
 
   closeJadwalModal();
   renderJadwalTable();
-  setTimeout(() => loadAllData(true), 1500);
+  // loadAllData di background sudah tidak diperlukan
 }
 
-async function hapusJadwal(id) {
+function hapusJadwal(id) {
   if (!confirm('Yakin ingin menghapus jadwal ini?')) return;
-  await apiPost('deleteJadwal', { id });
   STATE.data.jadwal = STATE.data.jadwal.filter(j => j.ID !== id);
+  apiPost('deleteJadwal', { id }); // fire-and-forget
   showToast('🗑️ Jadwal berhasil dihapus', 'warning');
   renderJadwalTable();
 }
@@ -2434,8 +2434,8 @@ function pasangTimerSelesai(ruangan) {
     const matkul    = snap.mataKuliah || '';
     STATUS_KULIAH_DATA[ruangan] = {};
     showToast(`⬜ ${ruangan} — Selesai (${matkul})`, 'info');
-    apiPost('resetStatusRuangan', { ruangan, namaKetua });
-    refreshSemuaTab(); // update kedua tab
+    refreshSemuaTab();
+    apiPost('resetStatusRuangan', { ruangan, namaKetua }); // fire-and-forget // update kedua tab
     delete _timers[ruangan + '_mulai'];
     delete _timers[ruangan + '_selesai'];
   }, msSelesai);
@@ -2878,13 +2878,13 @@ async function aksiRuangan(aksi, namaR) {
     const kelas      = jadwalR ? (jadwalR['Kelas'] || KETUA_SESSION.kelas) : KETUA_SESSION.kelas;
 
     STATUS_KULIAH_DATA[namaR] = { status:'Sedang Dipakai', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama, waktuUpdate:getJamSekarang() };
-    await apiPost('setStatusRuangan', { ruangan:namaR, statusBaru:'Sedang Dipakai', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama });
+    apiPost('setStatusRuangan', { ruangan:namaR, statusBaru:'Sedang Dipakai', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama });
     showToast(`✅ ${namaR} — Sedang Dipakai`, 'success');
     refreshSemuaTab();
 
   } else if (aksi === 'selesai' || aksi === 'batalBooking') {
     STATUS_KULIAH_DATA[namaR] = {};
-    await apiPost('resetStatusRuangan', { ruangan:namaR, namaKetua:KETUA_SESSION.nama });
+    apiPost('resetStatusRuangan', { ruangan:namaR, namaKetua:KETUA_SESSION.nama });
     showToast(`⬜ ${namaR} — ${aksi==='selesai' ? 'Kuliah selesai' : 'Booking dibatalkan'}`, 'info');
     refreshSemuaTab();
 
@@ -2955,7 +2955,7 @@ async function submitBooking(namaR) {
     status:'Dibooking', mataKuliah, dosen, jamMulai, jamSelesai,
     kelas:KETUA_SESSION.kelas, namaKetua:KETUA_SESSION.nama, waktuUpdate:getJamSekarang()
   };
-  await apiPost('bookingRuangan', {
+  apiPost('bookingRuangan', {
     ruangan:namaR, statusBaru:'Dibooking', mataKuliah, dosen, jamMulai, jamSelesai,
     kelas:KETUA_SESSION.kelas, namaKetua:KETUA_SESSION.nama
   });
@@ -2969,7 +2969,7 @@ async function resetSemuaStatusRuangan() {
   if (!confirm('Reset semua ruangan ke status Kosong?')) return;
   STATUS_KULIAH_DATA = {};
   drawStatusKuliah();
-  await apiPost('resetStatusKuliah', { namaKetua: KETUA_SESSION?.nama || '-' });
+  apiPost('resetStatusKuliah', { namaKetua: KETUA_SESSION?.nama || '-' });
   showToast('🔄 Semua ruangan direset ke Kosong', 'info');
 }
 
@@ -3075,7 +3075,7 @@ function closeRuanganModal() {
   STATE.editingId = null;
 }
 
-async function submitRuangan() {
+function submitRuangan() {
   const namaRuangan  = document.getElementById('ruangan-nama').value.trim();
   const keterangan   = document.getElementById('ruangan-keterangan').value.trim();
   if (!namaRuangan) { showToast('⚠️ Nama ruangan wajib diisi', 'warning'); return; }
@@ -3083,27 +3083,27 @@ async function submitRuangan() {
   const payload = { namaRuangan, keterangan };
   if (STATE.editingId) {
     payload.id = STATE.editingId;
-    await apiPost('editRuangan', payload);
     const idx = STATE.data.ruangan.findIndex(r => r.ID === STATE.editingId);
     if (idx > -1) STATE.data.ruangan[idx] = { ...STATE.data.ruangan[idx], 'Nama Ruangan': namaRuangan, Keterangan: keterangan };
     showToast('✅ Ruangan berhasil diupdate', 'success');
+    apiPost('editRuangan', payload); // fire-and-forget
   } else {
     const tempId = 'TEMP-' + Date.now();
-    await apiPost('addRuangan', payload);
+    apiPost('addRuangan', payload); // fire-and-forget
     STATE.data.ruangan.push({ ID: tempId, 'Nama Ruangan': namaRuangan, Keterangan: keterangan });
     showToast('✅ Ruangan berhasil ditambahkan', 'success');
   }
   closeRuanganModal();
   renderRuanganTable();
-  setTimeout(() => loadAllData(true), 1500);
+  // loadAllData di background sudah tidak diperlukan
 }
 
-async function hapusRuangan(id) {
+function hapusRuangan(id) {
   if (!confirm('Yakin ingin menghapus ruangan ini? Jadwal yang menggunakan ruangan ini tidak ikut terhapus.')) return;
-  await apiPost('deleteRuangan', { id });
   STATE.data.ruangan = STATE.data.ruangan.filter(r => r.ID !== id);
   showToast('🗑️ Ruangan berhasil dihapus', 'warning');
   renderRuanganTable();
+  apiPost('deleteRuangan', { id }); // fire-and-forget
 }
 
 // ================================================
@@ -3181,7 +3181,7 @@ function closeAkunKetuaModal() {
   STATE.editingId = null;
 }
 
-async function submitAkunKetua() {
+function submitAkunKetua() {
   const nama = document.getElementById('kt-nama').value.trim();
   const kelas = document.getElementById('kt-kelas').value.trim();
   const username = document.getElementById('kt-username').value.trim();
@@ -3191,25 +3191,25 @@ async function submitAkunKetua() {
   const payload = { nama, kelas, username, password };
   if (STATE.editingId) {
     payload.id = STATE.editingId;
-    await apiPost('editAkunKetua', payload);
     const idx = STATE.data.akunKetua.findIndex(a => a.ID === STATE.editingId);
     if (idx > -1) STATE.data.akunKetua[idx] = { ...STATE.data.akunKetua[idx], Nama: nama, Kelas: kelas, Username: username, Password: password };
     showToast('✅ Akun berhasil diupdate', 'success');
+    apiPost('editAkunKetua', payload); // fire-and-forget
   } else {
     const tempId = 'TEMP-' + Date.now();
-    await apiPost('addAkunKetua', payload);
+    apiPost('addAkunKetua', payload); // fire-and-forget
     STATE.data.akunKetua.push({ ID: tempId, Nama: nama, Kelas: kelas, Username: username, Password: password });
     showToast('✅ Akun ketua berhasil ditambahkan', 'success');
   }
   closeAkunKetuaModal();
   renderAkunKetuaTable();
-  setTimeout(() => loadAllData(true), 1500);
+  // loadAllData di background sudah tidak diperlukan
 }
 
-async function hapusAkunKetua(id) {
+function hapusAkunKetua(id) {
   if (!confirm('Yakin ingin menghapus akun ketua ini?')) return;
-  await apiPost('deleteAkunKetua', { id });
   STATE.data.akunKetua = STATE.data.akunKetua.filter(a => a.ID !== id);
+  apiPost('deleteAkunKetua', { id }); // fire-and-forget
   showToast('🗑️ Akun berhasil dihapus', 'warning');
   renderAkunKetuaTable();
 }
