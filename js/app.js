@@ -1975,10 +1975,10 @@ async function renderJadwalPublik() {
 
                   const namaMK   = (isSedang||isBooking) ? (statusR.mataKuliah||j['Nama Mata Kuliah']) : j['Nama Mata Kuliah'];
                   const namaDsn  = (isSedang||isBooking) ? (statusR.dosen||j['Dosen Pengampu']||'') : (j['Dosen Pengampu']||'');
-                  const badgeColor = isSedang ? '#4ade80' : isBooking ? '#60a5fa' : null;
-                  const badgeBg    = isSedang ? '#4ade8018' : isBooking ? '#60a5fa18' : null;
-                  const badgeBdr   = isSedang ? '#16a34a' : isBooking ? '#2563eb' : null;
-                  const badgeTxt   = isSedang ? '🟢 Sedang Dipakai' : isBooking ? '📅 Dibooking' : null;
+                  const badgeColor = isSedang ? '#4ade80' : isBooking ? '#60a5fa' : '#6b7280';
+                  const badgeBg    = isSedang ? '#4ade8015' : isBooking ? '#60a5fa15' : '#1f2937';
+                  const badgeBdr   = isSedang ? '#16a34a' : isBooking ? '#2563eb' : '#374151';
+                  const badgeTxt   = isSedang ? '🟢 Sedang Dipakai' : isBooking ? '📅 Dibooking' : '⬜ Kosong';
                   return `<td colspan="${span}" class="jp-cell ${isSedang?'jp-sedang':isBooking?'jp-booking':''}"
                     data-ruangan="${j.Ruangan||''}"
                     style="padding:8px 6px;
@@ -1988,8 +1988,8 @@ async function renderJadwalPublik() {
                     ${tooltipContent}
                     <div style="font-weight:700;font-size:11px;color:var(--text-primary);line-height:1.35;margin-bottom:3px;">${namaMK}</div>
                     <div style="font-size:9.5px;color:var(--text-muted);margin-bottom:4px;">${namaDsn}</div>
-                    <div style="font-size:9px;font-weight:600;color:${warna};padding:1px 5px;background:${warna}18;border-radius:3px;display:inline-block;margin-bottom:${badgeTxt?'3px':'0'};">📍 ${j.Ruangan||''}</div>
-                    ${badgeTxt ? `<br><span class="jp-status-badge" style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:2px;background:${badgeBg};color:${badgeColor};border:1px solid ${badgeBdr};">${badgeTxt}</span>` : ''}
+                    <div style="font-size:9px;font-weight:600;color:${warna};padding:1px 5px;background:${warna}18;border-radius:3px;display:inline-block;margin-bottom:3px;">📍 ${j.Ruangan||''}</div>
+                    <br><span class="jp-status-badge" style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;margin-top:2px;background:${badgeBg};color:${badgeColor};border:1px solid ${badgeBdr};">${badgeTxt}</span>
                   </td>`;
                 }).join('')}
               </tr>`;
