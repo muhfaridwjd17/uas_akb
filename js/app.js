@@ -1947,7 +1947,7 @@ async function renderJadwalPublik() {
                     return `<td style="padding:2px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;"><span style="font-size:8px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
                   }
                   if (rendered[i] === null) {
-                    return `<td class="jp-cell-kosong"></td>`;
+                    return `<td style="padding:4px;border:1px solid var(--border);background:transparent;"></td>`;
                   }
                   const { jadwal: j, span } = rendered[i];
                   const statusR   = STATUS_KULIAH_DATA[j.Ruangan] || {};
@@ -2607,9 +2607,9 @@ function drawStatusKuliah() {
       .hs-num{font-size:32px;font-weight:700;line-height:1;margin-bottom:4px;}
       .s-green .hs-num{color:#4ade80;} .s-amber .hs-num{color:#fbbf24;} .s-gray .hs-num{color:#aaa;} .s-blue .hs-num{color:#e2e8f0;}
       .hs-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#444;}
-      .rm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;}
-      .rc{border-radius:16px;overflow:hidden;position:relative;transition:transform .2s,box-shadow .2s;}
-      .rc:hover{transform:translateY(-3px);}
+      .rm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
+      .rc{border-radius:14px;overflow:hidden;position:relative;transition:transform .2s;}
+      .rc:hover{transform:translateY(-2px);}
       .rc.kosong        {background:#0f0f0f;border:1.5px solid #222;}
       .rc.belum-kuliah  {background:#080f09;border:1.5px solid #1a3a22;}
       .rc.sedang-dipakai{background:#04110a;border:1.5px solid #16a34a;}
@@ -2621,17 +2621,17 @@ function drawStatusKuliah() {
       .rc.sedang-dipakai .rc-stripe{background:linear-gradient(90deg,#16a34a,#4ade80);}
       .rc.dibooking      .rc-stripe{background:linear-gradient(90deg,#2563eb,#60a5fa);}
       .rc.terkunci       .rc-stripe{background:#b45309;}
-      .rc-body{padding:14px 14px 12px;}
-      .rc-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
-      .rc-name{font-size:15px;font-weight:700;color:#f1f5f9;letter-spacing:-.01em;}
-      .rc-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 9px;border-radius:20px;}
-      .rc.kosong         .rc-tag{background:#1a1a1a;color:#4b5563;}
+      .rc-body{padding:12px 13px 11px;}
+      .rc-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:8px;}
+      .rc-name{font-size:13px;font-weight:700;color:#f1f5f9;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+      .rc-tag{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:20px;flex-shrink:0;}
+      .rc.kosong         .rc-tag{background:#1c1c1c;color:#52525b;}
       .rc.belum-kuliah   .rc-tag{background:#052e16;color:#4ade80;}
       .rc.sedang-dipakai .rc-tag{background:#052e16;color:#4ade80;}
       .rc.dibooking      .rc-tag{background:#0f172a;color:#60a5fa;}
       .rc.terkunci       .rc-tag{background:#1c1100;color:#fbbf24;}
-      .rc-info{border-radius:10px;padding:10px 12px;margin-bottom:10px;border:1px solid;min-height:56px;display:flex;flex-direction:column;justify-content:center;gap:1px;}
-      .rc.kosong         .rc-info{background:#141414;border-color:#222;}
+      .rc-info{border-radius:8px;padding:8px 10px;margin-bottom:8px;border:1px solid;min-height:44px;display:flex;flex-direction:column;justify-content:center;gap:2px;}
+      .rc.kosong         .rc-info{background:#141414;border-color:#222;min-height:32px;}
       .rc.belum-kuliah   .rc-info{background:#061208;border-color:#1a3a22;}
       .rc.sedang-dipakai .rc-info{background:#051709;border-color:#16a34a55;}
       .rc.dibooking      .rc-info{background:#060c1e;border-color:#2563eb55;}
@@ -2641,16 +2641,16 @@ function drawStatusKuliah() {
       .rc.sedang-dipakai .rc-info-label{color:#4ade80;}
       .rc.dibooking      .rc-info-label{color:#60a5fa;}
       .rc.terkunci       .rc-info-label{color:#fbbf24;}
-      .rc-info-matkul{font-size:12px;font-weight:700;color:#f1f5f9;line-height:1.35;margin-bottom:2px;}
-      .rc-info-dosen{font-size:11px;color:#64748b;}
-      .rc-info-jam{font-size:11px;font-family:monospace;font-weight:700;margin-top:4px;}
+      .rc-info-matkul{font-size:11px;font-weight:700;color:#f1f5f9;line-height:1.3;margin-bottom:1px;}
+      .rc-info-dosen{font-size:10px;color:#64748b;}
+      .rc-info-jam{font-size:10px;font-family:monospace;font-weight:700;margin-top:3px;}
       .rc.belum-kuliah   .rc-info-jam{color:#4ade8088;}
       .rc.sedang-dipakai .rc-info-jam{color:#4ade80;}
       .rc.dibooking      .rc-info-jam{color:#60a5fa;}
       .rc-info-by{font-size:10px;color:#475569;margin-top:3px;}
-      .rc-empty{font-size:11px;color:#374151;text-align:center;width:100%;padding:4px 0;}
+      .rc-empty{font-size:10px;color:#374151;text-align:center;width:100%;}
       .rc-footer{display:flex;align-items:center;gap:8px;}
-      .rc-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:5px 10px;border-radius:20px;flex-shrink:0;letter-spacing:.02em;}
+      .rc-pill{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:4px 8px;border-radius:20px;flex-shrink:0;}
       .pill-dot{width:6px;height:6px;border-radius:50%;}
       .rc.kosong         .rc-pill{background:#1a1a1a;color:#4b5563;}
       .rc.belum-kuliah   .rc-pill{background:#052e16;color:#4ade80;}
@@ -2662,7 +2662,7 @@ function drawStatusKuliah() {
       .rc.sedang-dipakai .pill-dot{background:#4ade80;animation:sk-pulse 2s infinite;box-shadow:0 0 6px #4ade80;}
       .rc.dibooking      .pill-dot{background:#60a5fa;animation:sk-pulse 2s infinite;box-shadow:0 0 6px #60a5fa;}
       .rc.terkunci       .pill-dot{background:#fbbf24;}
-      .abtn{font-size:11px;font-weight:700;padding:7px 10px;border-radius:9px;cursor:pointer;border:1.5px solid;flex:1;text-align:center;white-space:nowrap;background:transparent;letter-spacing:.01em;}
+      .abtn{font-size:10px;font-weight:700;padding:5px 8px;border-radius:8px;cursor:pointer;border:1.5px solid;flex:1;text-align:center;white-space:nowrap;background:transparent;}
       .abtn.kuliah {color:#4ade80;border-color:#16a34a;} .abtn.kuliah:hover {background:#052e16;}
       .abtn.booking{color:#60a5fa;border-color:#2563eb;} .abtn.booking:hover{background:#0f172a;}
       .abtn.stop   {color:#f87171;border-color:#991b1b;} .abtn.stop:hover   {background:#1c0505;}
@@ -2762,7 +2762,7 @@ function drawStatusKuliah() {
             <div class="rc-info-dosen">${dsn}</div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;">
               <div class="rc-info-jam">${jm} – ${jsl}</div>
-              <div style="font-size:9px;color:#4b5563;font-style:italic;">${statusD.namaKetua||''}</div>
+              <div style="font-size:9px;color:#4b5563;">${statusD.namaKetua||''}</div>
             </div>`;
         } else if (statusNow === 'Dibooking') {
           infoHTML = `
@@ -2771,7 +2771,7 @@ function drawStatusKuliah() {
             <div class="rc-info-dosen">${statusD.dosen||'-'}</div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;">
               <div class="rc-info-jam">${statusD.jamMulai||''} – ${statusD.jamSelesai||''}</div>
-              <div style="font-size:9px;color:#4b5563;font-style:italic;">${statusD.namaKetua||''}</div>
+              <div style="font-size:9px;color:#4b5563;">${statusD.namaKetua||''}</div>
             </div>`;
         } else if (adaJadwal) {
           infoHTML = `
@@ -2780,7 +2780,7 @@ function drawStatusKuliah() {
             <div class="rc-info-dosen">${jadwalR[0]['Dosen Pengampu']||'-'}</div>
             <div class="rc-info-jam" style="margin-top:5px;">${formatJam(jadwalR[0]['Jam Mulai'])} – ${formatJam(jadwalR[0]['Jam Selesai'])}</div>`;
         } else {
-          infoHTML = `<span class="rc-empty">Tidak ada jadwal hari ini</span>`;
+          infoHTML = `<span class="rc-empty">Tidak ada jadwal</span>`;
         }
 
         // Corner icon
