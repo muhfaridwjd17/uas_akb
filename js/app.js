@@ -1949,10 +1949,25 @@ async function renderJadwalPublik() {
                   }
                   if (rendered[i] === null) return `<td style="padding:4px;border:1.5px solid var(--border);"></td>`;
                   const { jadwal: j, span } = rendered[i];
-                  return `<td colspan="${span}" style="padding:10px 8px;border:1.5px solid var(--border);background:${warna}12;vertical-align:middle;text-align:center;">
-                    <div style="font-weight:800;font-size:11px;color:var(--text-primary);line-height:1.4;margin-bottom:4px;">${j['Nama Mata Kuliah']}</div>
-                    <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">${j['Dosen Pengampu']||''}</div>
-                    <div style="font-size:10px;font-weight:700;color:${warna};padding:1px 6px;background:${warna}20;border-radius:4px;display:inline-block;">📍 ${j.Ruangan||''}</div>
+                  const sR2   = STATUS_KULIAH_DATA[j.Ruangan] || {};
+                  const sNow2 = sR2.status || '';
+                  const isS2  = sNow2 === 'Sedang Dipakai';
+                  const isB2  = sNow2 === 'Dibooking';
+                  const bC2   = isS2 ? '#4ade80' : isB2 ? '#60a5fa' : '#6b7280';
+                  const bBg2  = isS2 ? '#4ade8015' : isB2 ? '#60a5fa15' : '#1f293740';
+                  const bBdr2 = isS2 ? '#16a34a' : isB2 ? '#2563eb' : '#374151';
+                  const bT2   = isS2 ? '🟢 Sedang Dipakai' : isB2 ? '📅 Dibooking' : '⬜ Kosong';
+                  return `<td colspan="${span}" class="jp-cell ${isS2?'jp-sedang':isB2?'jp-booking':''}"
+                    data-ruangan="${j.Ruangan||''}"
+                    style="padding:8px 6px;
+                      border:${isS2?'2px solid #16a34a':isB2?'2px solid #2563eb':'1px solid var(--border)'};
+                      outline:${isS2?'1px solid #16a34a':isB2?'1px solid #2563eb':'none'};
+                      background:${isS2?'#041c0e':isB2?'#040d1c':warna+'10'};
+                      vertical-align:middle;text-align:center;position:relative;">
+                    <div style="font-weight:700;font-size:11px;color:var(--text-primary);line-height:1.35;margin-bottom:2px;">${j['Nama Mata Kuliah']}</div>
+                    <div style="font-size:9px;color:var(--text-muted);margin-bottom:3px;">${j['Dosen Pengampu']||''}</div>
+                    <div style="font-size:9px;font-weight:600;color:${warna};padding:1px 5px;background:${warna}18;border-radius:3px;display:inline-block;margin-bottom:3px;">📍 ${j.Ruangan||''}</div>
+                    <br><span class="jp-status-badge" style="display:inline-block;font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;background:${bBg2};color:${bC2};border:1px solid ${bBdr2};">${bT2}</span>
                   </td>`;
                 }).join('')}
               </tr>`;
