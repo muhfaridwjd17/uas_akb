@@ -117,7 +117,7 @@
       <a class="nav-item active" data-page="dashboard"><span class="nav-icon">🏠</span> Dashboard</a>
       <a class="nav-item" data-page="rapor"><span class="nav-icon">📋</span> Rapor &amp; KHS</a>
       <a class="nav-item" data-page="nilai"><span class="nav-icon">📝</span> Input Nilai</a>
-      <a class="nav-item" data-page="jadwal"><span class="nav-icon">🗓️</span> Jadwal Kuliah</a>
+      <a class="nav-item" data-page="jadwal" id="nav-jadwal"><span class="nav-icon">🗓️</span> Jadwal Kuliah <span style="font-size:9px;background:#1e3a5f;color:#60a5fa;padding:1px 6px;border-radius:4px;margin-left:4px;">Sekjur</span></a>
       <a class="nav-item" data-page="jadwal-publik"><span class="nav-icon">📌</span> Jadwal Ruangan</a>
       <a class="nav-item" data-page="status-kuliah"><span class="nav-icon">🟢</span> Status Kuliah</a>
 
@@ -126,6 +126,7 @@
       <a class="nav-item" data-page="dosen"><span class="nav-icon">🧑‍🏫</span> Dosen</a>
       <a class="nav-item" data-page="staf"><span class="nav-icon">👥</span> Staf</a>
       <a class="nav-item" data-page="matkul"><span class="nav-icon">📚</span> Mata Kuliah</a>
+      <a class="nav-item" data-page="ruangan"><span class="nav-icon">🚪</span> Ruangan</a>
       <a class="nav-item" data-page="akun-ketua"><span class="nav-icon">🔑</span> Akun Ketua Kelas</a>
     </nav>
     <div class="sidebar-footer">
@@ -304,6 +305,18 @@
       </section>
     </div>
 
+    <!-- PAGE: RUANGAN -->
+    <div class="page" id="page-ruangan">
+      <section class="section">
+        <div class="section-header">
+          <div class="section-eyebrow">Data Master</div>
+          <h2 class="section-title">Ruangan</h2>
+          <p class="section-sub">Kelola daftar ruangan yang tersedia untuk kuliah dan booking</p>
+        </div>
+        <div id="ruangan-content"></div>
+      </section>
+    </div>
+
     <!-- PAGE: AKUN KETUA KELAS -->
     <div class="page" id="page-akun-ketua">
       <section class="section">
@@ -355,7 +368,10 @@
       </div>
       <div class="form-group">
         <label class="form-label">Ruangan <span class="req">*</span></label>
-        <input type="text" id="jadwal-ruangan" class="form-input" placeholder="Contoh: R.101">
+        <select id="jadwal-ruangan" class="form-select">
+          <option value="">— Pilih Ruangan —</option>
+        </select>
+        <div class="form-hint">Belum ada? <a href="#" onclick="navigate('ruangan');closeJadwalModal();return false;" style="color:var(--accent);">Tambah ruangan dulu</a></div>
       </div>
       <div class="form-group">
         <label class="form-label">Kelas <span class="req">*</span></label>
@@ -530,6 +546,30 @@
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="closeAkunKetuaModal()">Batal</button>
       <button class="btn btn-primary" onclick="submitAkunKetua()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: TAMBAH / EDIT RUANGAN -->
+<div class="modal-overlay" id="modal-ruangan">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-ruangan-title">Tambah Ruangan</div>
+      <div class="modal-sub">Tambahkan nama ruangan yang tersedia untuk kuliah atau booking</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Nama Ruangan <span class="req">*</span></label>
+        <input type="text" id="ruangan-nama" class="form-input" placeholder="Contoh: AN 101, GS AB2, Lab Komputer...">
+      </div>
+      <div class="form-group full">
+        <label class="form-label">Keterangan</label>
+        <input type="text" id="ruangan-keterangan" class="form-input" placeholder="Contoh: Kapasitas 40 kursi, lantai 2...">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeRuanganModal()">Batal</button>
+      <button class="btn btn-primary" onclick="submitRuangan()">💾 Simpan</button>
     </div>
   </div>
 </div>
