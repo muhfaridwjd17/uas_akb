@@ -1820,46 +1820,47 @@ async function renderJadwalPublik() {
       .jp-cell:hover { filter: brightness(1.15); }
       .jp-tooltip {
         display: none;
-        position: absolute;
-        z-index: 9999;
-        top: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
+        position: fixed;
+        z-index: 99999;
         min-width: 240px;
-        background: #111827;
+        max-width: 280px;
         border-radius: 12px;
         padding: 14px 16px;
         text-align: left;
         pointer-events: none;
-        isolation: isolate;
+        background: #0f172a !important;
+        border: 1.5px solid #334155 !important;
+        outline: 3px solid #0f172a;
       }
       .jp-cell:hover .jp-tooltip { display: block; }
       .jp-tt-title {
         font-size: 12px; font-weight: 800; margin-bottom: 10px;
-        padding-bottom: 8px; border-bottom: 1px solid #2d3748;
-        color: #f1f5f9; letter-spacing: 0.02em;
+        padding-bottom: 8px; border-bottom: 1px solid #1e293b;
+        color: #f8fafc; letter-spacing: 0.02em;
       }
       .jp-tt-row {
         display: flex; gap: 10px; align-items: flex-start;
         font-size: 11px; margin-bottom: 6px;
       }
       .jp-tt-lbl {
-        flex-shrink: 0; color: #94a3b8; min-width: 80px; font-weight: 600;
+        flex-shrink: 0; color: #64748b; min-width: 90px; font-weight: 600;
       }
       .jp-tt-val { color: #e2e8f0; font-weight: 500; }
       .jp-sedang .jp-tooltip {
-        background: #052e16;
-        border: 1.5px solid #166534;
+        background: #052e16 !important;
+        border: 1.5px solid #16a34a !important;
+        outline: 3px solid #052e16;
       }
       .jp-sedang .jp-tt-title { color: #4ade80; border-bottom-color: #166534; }
-      .jp-sedang .jp-tt-lbl  { color: #4ade8099; }
+      .jp-sedang .jp-tt-lbl  { color: #4ade8088; }
       .jp-sedang .jp-tt-val  { color: #dcfce7; }
       .jp-booking .jp-tooltip {
-        background: #0f172a;
-        border: 1.5px solid #1e40af;
+        background: #0c1445 !important;
+        border: 1.5px solid #2563eb !important;
+        outline: 3px solid #0c1445;
       }
       .jp-booking .jp-tt-title { color: #60a5fa; border-bottom-color: #1e40af; }
-      .jp-booking .jp-tt-lbl  { color: #60a5fa99; }
+      .jp-booking .jp-tt-lbl  { color: #60a5fa88; }
       .jp-booking .jp-tt-val  { color: #dbeafe; }
       /* Cell kosong hover */
       .jp-cell-kosong {
@@ -2003,8 +2004,26 @@ async function renderJadwalPublik() {
       </div>`;
   });
 
-  html += '</div></div>'; // tutup jadwal-print-area dan overflow div
+  html += '</div></div>';
   container.innerHTML = html;
+
+  // Posisi tooltip mengikuti mouse supaya tidak tertimpa konten
+  container.querySelectorAll('.jp-cell').forEach(cell => {
+    const tt = cell.querySelector('.jp-tooltip');
+    if (!tt) return;
+    cell.addEventListener('mouseenter', () => { tt.style.display = 'block'; });
+    cell.addEventListener('mouseleave', () => { tt.style.display = 'none'; });
+    cell.addEventListener('mousemove', e => {
+      const x = e.clientX + 14;
+      const y = e.clientY + 14;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const tw = tt.offsetWidth || 260;
+      const th = tt.offsetHeight || 200;
+      tt.style.left = (x + tw > vw ? x - tw - 28 : x) + 'px';
+      tt.style.top  = (y + th > vh ? y - th - 28 : y) + 'px';
+    });
+  });
 }
 
 // ================================================
