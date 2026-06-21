@@ -122,7 +122,7 @@ function handleChangePassword(e) {
 // ---- STATE ----
 const STATE = {
   currentPage: 'dashboard',
-  data: { mahasiswa: [], dosen: [], staf: [], mataKuliah: [], nilai: [], jadwal: [], akunKetua: [] },
+  data: { mahasiswa: [], dosen: [], staf: [], mataKuliah: [], nilai: [], jadwal: [], akunKetua: [], ruangan: [] },
   loaded: false,
   editingId: null,
   raporCache: {},
@@ -201,6 +201,7 @@ async function loadAllData(force) {
     STATE.data.nilai = result.data.nilai || [];
     STATE.data.jadwal = result.data.jadwal || [];
     STATE.data.akunKetua = result.data.akunKetua || [];
+    STATE.data.ruangan   = result.data.ruangan   || [];
     STATE.loaded = true;
   }
 }
@@ -225,6 +226,7 @@ function navigate(page) {
   if (page === 'jadwal-publik') renderJadwalPublik();
   if (page === 'status-kuliah') renderStatusKuliah();
   if (page === 'akun-ketua') renderAkunKetuaPage();
+  if (page === 'ruangan') renderRuanganPage();
 
   document.getElementById('sidebar')?.classList.remove('open');
   document.getElementById('sidebar-overlay')?.classList.remove('open');
@@ -1632,6 +1634,13 @@ function openJadwalModal(data) {
   mkSelect.innerHTML = '<option value="">— Pilih Mata Kuliah —</option>' +
     STATE.data.mataKuliah.map(m => `<option value="${m.Kode}" data-nama="${m['Nama Mata Kuliah']}" data-semester="${m.Semester}" ${data && data['Kode MK']===m.Kode?'selected':''}>${m.Kode} — ${m['Nama Mata Kuliah']}</option>`).join('');
 
+  // Isi dropdown Ruangan dari data master ruangan
+  const ruanganSelect = document.getElementById('jadwal-ruangan');
+  if (ruanganSelect) {
+    ruanganSelect.innerHTML = '<option value="">— Pilih Ruangan —</option>' +
+      STATE.data.ruangan.map(r => `<option value="${r['Nama Ruangan']}" ${data && data['Ruangan']===r['Nama Ruangan']?'selected':''}>${r['Nama Ruangan']}${r['Keterangan']?' — '+r['Keterangan']:''}</option>`).join('');
+  }
+
   // Isi daftar dosen dengan checkbox (multi-select)
   const dosenList = document.getElementById('jadwal-dosen-list');
   const selectedDosen = data ? String(data['Dosen Pengampu']||'').split(',').map(d => d.trim()).filter(Boolean) : [];
@@ -1680,7 +1689,8 @@ async function submitJadwal() {
   const semester = document.getElementById('jadwal-semester').value;
   const jamMulai = (document.getElementById('jadwal-jam-mulai').value || '').substring(0, 5);
   const jamSelesai = (document.getElementById('jadwal-jam-selesai').value || '').substring(0, 5);
-  const ruangan = document.getElementById('jadwal-ruangan').value.trim();
+  const ruanganEl = document.getElementById('jadwal-ruangan');
+  const ruangan = ruanganEl.tagName === 'SELECT' ? ruanganEl.value : ruanganEl.value.trim();
   const kelas = document.getElementById('jadwal-kelas').value.trim();
   // Ambil semua dosen yang dicentang
   const dosenChecked = [...document.querySelectorAll('#jadwal-dosen-list input[type="checkbox"]:checked')].map(cb => cb.value);
@@ -2187,28 +2197,50 @@ function drawStatusKuliah() {
   const container = document.getElementById('status-kuliah-content');
   if (!container) return;
 
-  const jadwal = STATE.data.jadwal;
-
   if (!KETUA_SESSION) {
     container.innerHTML = `
       <div style="text-align:center;padding:40px 20px;">
         <div style="font-size:40px;margin-bottom:14px;">🔐</div>
         <div style="font-size:15px;font-weight:800;color:var(--text-primary);margin-bottom:8px;">Login Diperlukan</div>
-        <div style="font-size:13px;color:var(--text-muted);">Login sebagai Ketua Kelas untuk melihat dan mengubah status ruangan</div>
+        <div style="font-size:13px;color:var(--text-muted);">Login sebagai Ketua Kelas untuk mengubah status ruangan</div>
       </div>`;
     return;
   }
 
-  const semuaRuangan = [...new Set(jadwal.map(j => j.Ruangan).filter(Boolean))].sort();
+  // Ambil semua ruangan dari data master ruangan
+  const semuaRuangan = [...STATE.data.ruangan].sort((a,b) =>
+    String(a['Nama Ruangan']).localeCompare(String(b['Nama Ruangan']))
+  );
 
   if (semuaRuangan.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📍</div><div class="empty-state-title">Belum ada ruangan</div></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🚪</div><div class="empty-state-title">Belum ada ruangan</div><div class="empty-state-text">Tambahkan ruangan terlebih dahulu di menu Ruangan</div></div>`;
     return;
   }
 
-  const jmlDipakai = semuaRuangan.filter(r => STATUS_KULIAH_DATA[r]?.status === 'Sedang Dipakai' && STATUS_KULIAH_DATA[r]?.diklikkOleh === KETUA_SESSION.nama).length;
-  const jmlTerkunci = semuaRuangan.filter(r => STATUS_KULIAH_DATA[r]?.status === 'Sedang Dipakai' && STATUS_KULIAH_DATA[r]?.diklikkOleh !== KETUA_SESSION.nama).length;
-  const jmlKosong = semuaRuangan.filter(r => STATUS_KULIAH_DATA[r]?.status !== 'Sedang Dipakai').length;
+  const hariIni = getNamaHariIni();
+  const jamSekarang = getJamSekarang();
+
+  // Jadwal hari ini per ruangan
+  const jadwalHariIni = {};
+  STATE.data.jadwal.forEach(j => {
+    if (j.Hari === hariIni && j.Ruangan) {
+      if (!jadwalHariIni[j.Ruangan]) jadwalHariIni[j.Ruangan] = [];
+      jadwalHariIni[j.Ruangan].push(j);
+    }
+  });
+  // Urutkan per jam mulai
+  Object.keys(jadwalHariIni).forEach(r => {
+    jadwalHariIni[r].sort((a,b) => formatJam(a['Jam Mulai']).localeCompare(formatJam(b['Jam Mulai'])));
+  });
+
+  // Hitung stat
+  const namaRuanganList = semuaRuangan.map(r => r['Nama Ruangan']);
+  const jmlSedang   = namaRuanganList.filter(r => STATUS_KULIAH_DATA[r]?.status === 'Sedang Kuliah').length;
+  const jmlBooking  = namaRuanganList.filter(r => STATUS_KULIAH_DATA[r]?.status === 'Dibooking').length;
+  const jmlKosong   = namaRuanganList.filter(r => {
+    const s = STATUS_KULIAH_DATA[r]?.status;
+    return !s || s === 'Kosong' || s === 'Belum Kuliah';
+  }).length;
 
   let html = `
     <style>
@@ -2230,99 +2262,116 @@ function drawStatusKuliah() {
       .s-gray  .hs-badge{background:#1c1c1a;color:#666;border:1px solid #333;}
       .s-blue  .hs-badge{background:#0a1829;color:#60a5fa;border:1px solid #1e3a5f;}
       .hs-num{font-size:32px;font-weight:700;line-height:1;margin-bottom:4px;}
-      .s-green .hs-num{color:#4ade80;}
-      .s-amber .hs-num{color:#fbbf24;}
-      .s-gray  .hs-num{color:#aaa;}
-      .s-blue  .hs-num{color:#e2e8f0;}
+      .s-green .hs-num{color:#4ade80;} .s-amber .hs-num{color:#fbbf24;} .s-gray .hs-num{color:#aaa;} .s-blue .hs-num{color:#e2e8f0;}
       .hs-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#444;}
-      .rm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(172px,1fr));gap:8px;}
+      .rm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
       .rc{border-radius:14px;overflow:hidden;position:relative;transition:transform .15s;}
       .rc:hover{transform:translateY(-2px);}
-      .rc.kosong {background:#0a0a0a;border:1px solid #1c1c1a;}
-      .rc.dipakai{background:#040f08;border:1px solid #166534;}
-      .rc.terkunci{background:#100d00;border:1px solid #92400e;}
-      .rc-corner{position:absolute;top:0;right:0;width:44px;height:44px;border-radius:0 14px 0 44px;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0 0;font-size:14px;}
-      .rc.kosong  .rc-corner{background:#141412;color:#333;}
-      .rc.dipakai .rc-corner{background:#0d2e1a;color:#4ade80;}
-      .rc.terkunci .rc-corner{background:#2b1e00;color:#fbbf24;}
+      .rc.kosong        {background:#0a0a0a;border:1px solid #1c1c1a;}
+      .rc.belum-kuliah  {background:#060f0a;border:1px solid #1a3a22;}
+      .rc.sedang-kuliah {background:#040f08;border:1px solid #166534;}
+      .rc.dibooking     {background:#060a18;border:1px solid #1e3a8a;}
+      .rc.terkunci      {background:#100d00;border:1px solid #92400e;}
+      .rc-corner{position:absolute;top:0;right:0;width:44px;height:44px;border-radius:0 14px 0 44px;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0 0;}
+      .rc.kosong        .rc-corner{background:#141412;color:#333;}
+      .rc.belum-kuliah  .rc-corner{background:#0a2018;color:#2d6a4f;}
+      .rc.sedang-kuliah .rc-corner{background:#0d2e1a;color:#4ade80;}
+      .rc.dibooking     .rc-corner{background:#0a1229;color:#60a5fa;}
+      .rc.terkunci      .rc-corner{background:#2b1e00;color:#fbbf24;}
       .rc-body{padding:14px 14px 12px;}
       .rc-name{font-size:15px;font-weight:700;color:#e8e8e8;margin-bottom:4px;margin-top:2px;}
       .rc-tag{display:inline-block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:4px;margin-bottom:10px;}
-      .rc.kosong  .rc-tag{background:#141412;color:#444;border:1px solid #1c1c1a;}
-      .rc.dipakai .rc-tag{background:#0d2e1a;color:#4ade80;border:1px solid #166534;}
-      .rc.terkunci .rc-tag{background:#2b1e00;color:#fbbf24;border:1px solid #92400e;}
-      .rc-info{border-radius:8px;padding:8px 10px;margin-bottom:10px;border:1px solid;min-height:48px;display:flex;flex-direction:column;justify-content:center;}
-      .rc.kosong  .rc-info{background:#0d0d0b;border-color:#1a1a17;}
-      .rc.dipakai .rc-info{background:#061610;border-color:#1a3a22;}
-      .rc.terkunci .rc-info{background:#100c00;border-color:#3a2e00;}
-      .rc-info-kelas{font-size:10px;font-weight:700;margin-bottom:1px;}
-      .rc.dipakai  .rc-info-kelas{color:#4ade80;}
-      .rc.terkunci .rc-info-kelas{color:#fbbf24;}
-      .rc-info-matkul{font-size:10px;color:#444;}
-      .rc-info-by{font-size:9px;color:#333;margin-top:2px;}
+      .rc.kosong        .rc-tag{background:#141412;color:#444;border:1px solid #1c1c1a;}
+      .rc.belum-kuliah  .rc-tag{background:#0a2018;color:#2d6a4f;border:1px solid #1a3a22;}
+      .rc.sedang-kuliah .rc-tag{background:#0d2e1a;color:#4ade80;border:1px solid #166534;}
+      .rc.dibooking     .rc-tag{background:#0a1229;color:#60a5fa;border:1px solid #1e3a8a;}
+      .rc.terkunci      .rc-tag{background:#2b1e00;color:#fbbf24;border:1px solid #92400e;}
+      .rc-info{border-radius:8px;padding:8px 10px;margin-bottom:10px;border:1px solid;min-height:56px;display:flex;flex-direction:column;justify-content:center;}
+      .rc.kosong        .rc-info{background:#0d0d0b;border-color:#1a1a17;}
+      .rc.belum-kuliah  .rc-info{background:#060f08;border-color:#1a3a22;}
+      .rc.sedang-kuliah .rc-info{background:#061610;border-color:#1a3a22;}
+      .rc.dibooking     .rc-info{background:#060a18;border-color:#1e3a8a;}
+      .rc.terkunci      .rc-info{background:#100c00;border-color:#3a2e00;}
+      .rc-info-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
+      .rc.belum-kuliah  .rc-info-label{color:#2d6a4f;}
+      .rc.sedang-kuliah .rc-info-label{color:#4ade80;}
+      .rc.dibooking     .rc-info-label{color:#60a5fa;}
+      .rc.terkunci      .rc-info-label{color:#fbbf24;}
+      .rc-info-matkul{font-size:11px;font-weight:700;color:#e8e8e8;margin-bottom:2px;line-height:1.3;}
+      .rc-info-dosen{font-size:10px;color:#555;}
+      .rc-info-jam{font-size:10px;font-family:monospace;font-weight:600;margin-top:3px;}
+      .rc.belum-kuliah  .rc-info-jam{color:#2d6a4f;}
+      .rc.sedang-kuliah .rc-info-jam{color:#4ade80;}
+      .rc.dibooking     .rc-info-jam{color:#60a5fa;}
+      .rc-info-by{font-size:9px;color:#444;margin-top:2px;}
       .rc-empty{font-size:10px;color:#2a2a2a;text-align:center;width:100%;}
       .rc-footer{display:flex;align-items:center;gap:6px;}
       .rc-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:4px 8px;border-radius:100px;flex-shrink:0;}
       .pill-dot{width:5px;height:5px;border-radius:50%;}
-      .rc.kosong  .rc-pill{background:#111;color:#444;border:1px solid #1c1c1a;}
-      .rc.dipakai .rc-pill{background:#0d2e1a;color:#4ade80;border:1px solid #166534;}
-      .rc.terkunci .rc-pill{background:#2b1e00;color:#fbbf24;border:1px solid #92400e;}
-      .rc.kosong  .pill-dot{background:#333;}
-      .rc.dipakai .pill-dot{background:#4ade80;animation:sk-pulse 2s infinite;}
-      .rc.terkunci .pill-dot{background:#fbbf24;}
-      .abtn{font-size:10px;font-weight:600;padding:5px 8px;border-radius:7px;cursor:pointer;border:1px solid;flex:1;text-align:center;white-space:nowrap;background:transparent;}
-      .abtn.go{color:#4ade80;border-color:#166534;}
-      .abtn.go:hover{background:#0d2e1a;}
-      .abtn.stop{color:#f87171;border-color:#7f1d1d;}
-      .abtn.stop:hover{background:#1c0808;}
+      .rc.kosong        .rc-pill{background:#111;color:#444;border:1px solid #1c1c1a;}
+      .rc.belum-kuliah  .rc-pill{background:#0a2018;color:#2d6a4f;border:1px solid #1a3a22;}
+      .rc.sedang-kuliah .rc-pill{background:#0d2e1a;color:#4ade80;border:1px solid #166534;}
+      .rc.dibooking     .rc-pill{background:#0a1229;color:#60a5fa;border:1px solid #1e3a8a;}
+      .rc.terkunci      .rc-pill{background:#2b1e00;color:#fbbf24;border:1px solid #92400e;}
+      .rc.kosong        .pill-dot{background:#333;}
+      .rc.belum-kuliah  .pill-dot{background:#2d6a4f;}
+      .rc.sedang-kuliah .pill-dot{background:#4ade80;animation:sk-pulse 2s infinite;}
+      .rc.dibooking     .pill-dot{background:#60a5fa;animation:sk-pulse 2s infinite;}
+      .rc.terkunci      .pill-dot{background:#fbbf24;}
+      .abtn{font-size:10px;font-weight:600;padding:6px 8px;border-radius:7px;cursor:pointer;border:1px solid;flex:1;text-align:center;white-space:nowrap;background:transparent;}
+      .abtn.kuliah{color:#4ade80;border-color:#166534;} .abtn.kuliah:hover{background:#0d2e1a;}
+      .abtn.booking{color:#60a5fa;border-color:#1e3a8a;} .abtn.booking:hover{background:#060a18;}
+      .abtn.stop{color:#f87171;border-color:#7f1d1d;} .abtn.stop:hover{background:#1c0808;}
       .abtn.locked{color:#2a2a2a;border-color:#1a1a1a;cursor:not-allowed;}
+      /* Modal Booking */
+      .bk-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;}
+      .bk-modal{background:#0d0d0d;border:1px solid #222;border-radius:18px;padding:24px;width:380px;max-width:92vw;}
+      .bk-title{font-size:15px;font-weight:800;color:#e8e8e8;margin-bottom:3px;}
+      .bk-sub{font-size:12px;color:#555;margin-bottom:18px;}
+      .bk-field{margin-bottom:12px;}
+      .bk-field label{display:block;font-size:11px;font-weight:600;color:#555;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;}
+      .bk-field input{width:100%;background:#111;border:1px solid #222;border-radius:8px;padding:9px 12px;font-size:12px;color:#e8e8e8;outline:none;box-sizing:border-box;}
+      .bk-field input:focus{border-color:#1e3a8a;}
+      .bk-field input[disabled]{color:#444;cursor:not-allowed;}
+      .bk-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+      .bk-actions{display:flex;gap:8px;margin-top:18px;}
+      .bk-cancel{flex:1;padding:10px;border-radius:9px;border:1px solid #222;background:transparent;color:#555;font-size:12px;font-weight:600;cursor:pointer;}
+      .bk-cancel:hover{background:#111;}
+      .bk-submit{flex:2;padding:10px;border-radius:9px;border:none;background:#1e3a8a;color:#93c5fd;font-size:12px;font-weight:700;cursor:pointer;}
+      .bk-submit:hover{background:#1d4ed8;}
     </style>
 
     <div class="hs-grid">
       <div class="hs s-green">
-        <div class="hs-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4l-6 4v12l6 4V4z"/>
-          </svg>
-        </div>
-        <span class="hs-badge">Aktif</span>
-        <div class="hs-num">${jmlDipakai}</div>
-        <div class="hs-lbl">Sedang dipakai</div>
+        <div class="hs-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4l-6 4v12l6 4V4z"/></svg></div>
+        <span class="hs-badge">Kuliah</span>
+        <div class="hs-num">${jmlSedang}</div>
+        <div class="hs-lbl">Sedang Kuliah</div>
       </div>
       <div class="hs s-amber">
-        <div class="hs-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-          </svg>
-        </div>
-        <span class="hs-badge">Kunci</span>
-        <div class="hs-num">${jmlTerkunci}</div>
-        <div class="hs-lbl">Terkunci</div>
+        <div class="hs-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <span class="hs-badge">Booking</span>
+        <div class="hs-num">${jmlBooking}</div>
+        <div class="hs-lbl">Dibooking</div>
       </div>
       <div class="hs s-gray">
-        <div class="hs-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4l-6 4v12l6 4V4z"/>
-          </svg>
-        </div>
+        <div class="hs-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4l-6 4v12l6 4V4z"/></svg></div>
         <span class="hs-badge">Bebas</span>
         <div class="hs-num">${jmlKosong}</div>
-        <div class="hs-lbl">Kosong</div>
+        <div class="hs-lbl">Kosong / Belum Mulai</div>
       </div>
       <div class="hs s-blue">
-        <div class="hs-icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-        </div>
+        <div class="hs-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
         <span class="hs-badge">Total</span>
         <div class="hs-num">${semuaRuangan.length}</div>
-        <div class="hs-lbl">Semua ruangan</div>
+        <div class="hs-lbl">Semua Ruangan</div>
       </div>
     </div>
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#444;">Status ruangan</span>
+      <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#444;">
+        Status Ruangan — ${hariIni}
+      </span>
       <button onclick="resetSemuaStatusRuangan()" style="font-size:11px;color:#555;background:transparent;border:1px solid #222;border-radius:8px;padding:4px 12px;cursor:pointer;display:flex;align-items:center;gap:5px;">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
         Reset semua
@@ -2330,158 +2379,210 @@ function drawStatusKuliah() {
     </div>
 
     <div class="rm-grid">
-      ${semuaRuangan.map(ruangan => {
-        const data = STATUS_KULIAH_DATA[ruangan] || {};
-        const isTerpakai = data.status === 'Sedang Dipakai';
-        const isOwner = isTerpakai && data.diklikkOleh === KETUA_SESSION.nama;
-        const isLocked = isTerpakai && !isOwner;
-        const state = isLocked ? 'terkunci' : isTerpakai ? 'dipakai' : 'kosong';
-        const tagText = isLocked ? 'Dikunci ketua lain' : isTerpakai ? 'Dipakai · Kamu' : 'Kosong';
-        const pillText = isLocked ? 'Terkunci' : isTerpakai ? 'Live' : 'Bebas';
+      ${semuaRuangan.map(rObj => {
+        const namaR     = rObj['Nama Ruangan'];
+        const statusD   = STATUS_KULIAH_DATA[namaR] || {};
+        const statusNow = statusD.status || '';
+
+        // Cek jadwal hari ini untuk ruangan ini
+        const jadwalR   = jadwalHariIni[namaR] || [];
+        const adaJadwal = jadwalR.length > 0;
+
+        // Tentukan state
+        let state, tagText, pillText;
+        const isLocked = (statusNow === 'Sedang Kuliah' || statusNow === 'Dibooking')
+                      && statusD.namaKetua && statusD.namaKetua !== KETUA_SESSION.nama;
+
+        if (isLocked) {
+          state = 'terkunci'; tagText = 'Dikunci'; pillText = 'Terkunci';
+        } else if (statusNow === 'Sedang Kuliah') {
+          state = 'sedang-kuliah'; tagText = 'Sedang Kuliah'; pillText = 'Live';
+        } else if (statusNow === 'Dibooking') {
+          state = 'dibooking'; tagText = 'Dibooking'; pillText = 'Booking';
+        } else if (adaJadwal) {
+          state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
+        } else {
+          state = 'kosong'; tagText = 'Kosong'; pillText = 'Bebas';
+        }
+
+        // Info di dalam card
+        let infoHTML = '';
+        if (statusNow === 'Sedang Kuliah') {
+          infoHTML = `
+            <div class="rc-info-label">Sedang Berlangsung</div>
+            <div class="rc-info-matkul">${statusD.mataKuliah || (adaJadwal ? jadwalR[0]['Nama Mata Kuliah'] : '-')}</div>
+            <div class="rc-info-dosen">${statusD.dosen || (adaJadwal ? jadwalR[0]['Dosen Pengampu'] : '-')}</div>
+            <div class="rc-info-jam">${statusD.jamMulai || ''} – ${statusD.jamSelesai || ''}</div>
+            <div class="rc-info-by">Ketua: ${statusD.namaKetua || '-'}</div>`;
+        } else if (statusNow === 'Dibooking') {
+          infoHTML = `
+            <div class="rc-info-label">Dibooking</div>
+            <div class="rc-info-matkul">${statusD.mataKuliah || '-'}</div>
+            <div class="rc-info-dosen">${statusD.dosen || '-'}</div>
+            <div class="rc-info-jam">${statusD.jamMulai || ''} – ${statusD.jamSelesai || ''}</div>
+            <div class="rc-info-by">Ketua: ${statusD.namaKetua || '-'}</div>`;
+        } else if (adaJadwal) {
+          infoHTML = `
+            <div class="rc-info-label">Jadwal Hari Ini</div>
+            <div class="rc-info-matkul">${jadwalR[0]['Nama Mata Kuliah']}</div>
+            <div class="rc-info-dosen">${jadwalR[0]['Dosen Pengampu'] || '-'}</div>
+            <div class="rc-info-jam">${formatJam(jadwalR[0]['Jam Mulai'])} – ${formatJam(jadwalR[0]['Jam Selesai'])}</div>`;
+        } else {
+          infoHTML = `<span class="rc-empty">Tidak ada jadwal hari ini</span>`;
+        }
+
+        // Corner icon
         const cornerSVG = isLocked
-          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
-          : isTerpakai
-          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`
-          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4l-6 4v12l6 4V4z"/></svg>`;
+          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
+          : statusNow === 'Sedang Kuliah'
+          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`
+          : statusNow === 'Dibooking'
+          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`
+          : adaJadwal
+          ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`
+          : `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4l-6 4v12l6 4V4z"/></svg>`;
+
+        // Tombol aksi
+        let btnHTML = '';
+        if (isLocked) {
+          btnHTML = `<button class="abtn locked" disabled>🔒 Dikunci</button>`;
+        } else if (statusNow === 'Sedang Kuliah') {
+          btnHTML = `<button class="abtn stop" onclick="aksiRuangan('selesai','${namaR}')">⏹ Selesai</button>`;
+        } else if (statusNow === 'Dibooking') {
+          btnHTML = `<button class="abtn stop" onclick="aksiRuangan('batalBooking','${namaR}')">✕ Batalkan</button>`;
+        } else if (adaJadwal) {
+          btnHTML = `<button class="abtn kuliah" onclick="aksiRuangan('mulaiKuliah','${namaR}')">▶ Mulai Kuliah</button>`;
+        } else {
+          btnHTML = `<button class="abtn booking" onclick="aksiRuangan('booking','${namaR}')">📅 Booking</button>`;
+        }
 
         return `<div class="rc ${state}">
           <div class="rc-corner">${cornerSVG}</div>
           <div class="rc-body">
-            <div class="rc-name">${ruangan}</div>
+            <div class="rc-name">${namaR}</div>
             <div class="rc-tag">${tagText}</div>
-            <div class="rc-info">
-              ${isTerpakai ? `
-                <div class="rc-info-kelas">${data.kelas||''}</div>
-                <div class="rc-info-matkul">${data.mataKuliah||''}</div>
-                <div class="rc-info-by">${data.diklikkOleh||'-'} · ${data.waktuUpdate||''}</div>
-              ` : `<span class="rc-empty">Tersedia untuk digunakan</span>`}
-            </div>
+            <div class="rc-info">${infoHTML}</div>
             <div class="rc-footer">
               <span class="rc-pill"><span class="pill-dot"></span>${pillText}</span>
-              ${isLocked
-                ? `<button class="abtn locked" disabled>🔒 Dikunci</button>`
-                : `<button class="abtn ${isTerpakai ? 'stop' : 'go'}" onclick="toggleStatusRuangan('${ruangan}', ${isTerpakai})">
-                    ${isTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
-                  </button>`
-              }
+              ${btnHTML}
             </div>
           </div>
         </div>`;
       }).join('')}
     </div>`;
 
-  // ROSTER JADWAL KELAS KETUA — dikelompokkan per hari
-  const jadwalKelas = STATE.data.jadwal.filter(j => j.Kelas === KETUA_SESSION.kelas);
-  if (jadwalKelas.length > 0) {
-    const hariColors = {
-      Senin:   { text: '#4ade80', border: '#166534', bg: '#34d39918' },
-      Selasa:  { text: '#67e8f9', border: '#164e63', bg: '#22d3ee18' },
-      Rabu:    { text: '#a5b4fc', border: '#312e81', bg: '#818cf818' },
-      Kamis:   { text: '#fbbf24', border: '#92400e', bg: '#fbbf2418' },
-      Jumat:   { text: '#f87171', border: '#7f1d1d', bg: '#f4375018' },
-      Sabtu:   { text: '#fb923c', border: '#7c2d12', bg: '#f9731618' },
-    };
-
-    // Kelompokkan jadwal per hari
-    const perHari = {};
-    HARI_LIST.forEach(h => { perHari[h] = []; });
-    jadwalKelas.forEach(j => { if (perHari[j.Hari]) perHari[j.Hari].push(j); });
-    // Urutkan setiap hari berdasarkan jam mulai
-    HARI_LIST.forEach(h => {
-      perHari[h].sort((a, b) => formatJam(a['Jam Mulai']).localeCompare(formatJam(b['Jam Mulai'])));
-    });
-    // Hanya tampilkan hari yang punya jadwal
-    const hariAda = HARI_LIST.filter(h => perHari[h].length > 0);
-
-    html += `
-      <div style="margin-top:28px;border-top:1px solid #1a1a1a;padding-top:24px;">
-        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#444;margin-bottom:20px;">
-          Jadwal kelas <span style="color:#4ade80;">${KETUA_SESSION.kelas}</span>
-        </div>
-
-        ${hariAda.map(hari => {
-          const c = hariColors[hari];
-          return `
-            <div style="margin-bottom:20px;">
-              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-                <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
-                  padding:4px 12px;border-radius:6px;white-space:nowrap;
-                  background:${c.bg};color:${c.text};border:1px solid ${c.border};">${hari}</span>
-                <div style="flex:1;height:1px;background:linear-gradient(90deg,${c.border},transparent);"></div>
-              </div>
-              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;">
-                ${perHari[hari].map(j => {
-                  const ruanganData = STATUS_KULIAH_DATA[j.Ruangan] || {};
-                  const ruanganTerpakai = ruanganData.status === 'Sedang Dipakai';
-                  const isOwner = ruanganTerpakai && ruanganData.diklikkOleh === KETUA_SESSION.nama;
-                  const isLocked = ruanganTerpakai && !isOwner;
-                  const cardBorder = isLocked ? '#92400e' : ruanganTerpakai ? '#166534' : '#1c1c1a';
-                  const cardBg    = isLocked ? '#100d00' : ruanganTerpakai ? '#040f08' : '#0a0a0a';
-                  const dotColor  = isLocked ? '#fbbf24' : ruanganTerpakai ? '#4ade80' : '#333';
-                  const dotAnim   = (ruanganTerpakai && !isLocked) ? 'animation:sk-pulse 2s infinite;' : '';
-                  return `
-                    <div style="border-radius:12px;padding:14px;background:${cardBg};border:1px solid ${cardBorder};transition:transform .15s;">
-                      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:12px;">
-                        <div>
-                          <div style="font-weight:700;font-size:12px;color:#e8e8e8;">${j['Nama Mata Kuliah']}</div>
-                          <div style="font-size:10px;color:#444;margin-top:2px;">${j['Dosen Pengampu']||'-'}</div>
-                        </div>
-                        <div style="width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:3px;background:${dotColor};${dotAnim}"></div>
-                      </div>
-                      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                        <div>
-                          <div style="font-size:10px;font-family:monospace;font-weight:700;color:${c.text};">${formatJam(j['Jam Mulai'])} – ${formatJam(j['Jam Selesai'])}</div>
-                          <div style="font-size:10px;color:#555;margin-top:2px;">📍 ${j.Ruangan}</div>
-                        </div>
-                        ${isLocked
-                          ? `<button style="padding:5px 12px;border-radius:7px;font-size:10px;font-weight:600;cursor:not-allowed;background:transparent;border:1px solid #1a1a1a;color:#2a2a2a;white-space:nowrap;">🔒 Dikunci</button>`
-                          : `<button onclick="toggleStatusRuangan('${j.Ruangan}', ${ruanganTerpakai})"
-                              style="padding:5px 12px;border-radius:7px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;
-                                background:transparent;border:1px solid ${ruanganTerpakai ? '#7f1d1d' : '#166534'};
-                                color:${ruanganTerpakai ? '#f87171' : '#4ade80'};">
-                              ${ruanganTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
-                            </button>`
-                        }
-                      </div>
-                    </div>`;
-                }).join('')}
-              </div>
-            </div>`;
-        }).join('')}
-      </div>`;
-  }
-
   container.innerHTML = html;
 }
 
-
-
-async function toggleStatusRuangan(ruangan, currentlyTerpakai) {
+// Aksi tombol ruangan
+async function aksiRuangan(aksi, namaR) {
   if (!KETUA_SESSION) { showToast('⚠️ Login terlebih dahulu', 'warning'); return; }
 
-  // Cek apakah ruangan dikunci oleh ketua lain
-  const existingData = STATUS_KULIAH_DATA[ruangan] || {};
-  if (currentlyTerpakai && existingData.diklikkOleh && existingData.diklikkOleh !== KETUA_SESSION.nama) {
-    showToast(`🔒 Ruangan ${ruangan} sedang dikunci oleh ${existingData.diklikkOleh}`, 'warning');
-    return;
+  const statusD = STATUS_KULIAH_DATA[namaR] || {};
+
+  // Cek dikunci ketua lain
+  if (['selesai','batalBooking'].includes(aksi)) {
+    if (statusD.namaKetua && statusD.namaKetua !== KETUA_SESSION.nama) {
+      showToast(`🔒 ${namaR} dikunci oleh ${statusD.namaKetua}`, 'warning');
+      return;
+    }
   }
 
-  if (!currentlyTerpakai) {
-    // Aktifkan — cari info jadwal ruangan ini
-    const jadwalRuangan = STATE.data.jadwal.filter(j => j.Ruangan === ruangan);
-    let kelas = '', mataKuliah = '';
-    if (jadwalRuangan.length > 0) {
-      kelas = jadwalRuangan[0].Kelas || '';
-      mataKuliah = jadwalRuangan[0]['Nama Mata Kuliah'] || '';
-    }
-    STATUS_KULIAH_DATA[ruangan] = { status: 'Sedang Dipakai', kelas, mataKuliah, diklikkOleh: KETUA_SESSION.nama, waktuUpdate: getJamSekarang() };
-    await apiPost('setStatusRuangan', { ruangan, statusBaru: 'Sedang Dipakai', kelas, mataKuliah, namaKetua: KETUA_SESSION.nama });
-    showToast(`✅ Ruangan ${ruangan} — Sedang Dipakai`, 'success');
-  } else {
-    STATUS_KULIAH_DATA[ruangan] = { status: 'Kosong' };
-    await apiPost('resetStatusRuangan', { ruangan, namaKetua: KETUA_SESSION.nama });
-    showToast(`⬜ Ruangan ${ruangan} — Dikosongkan`, 'info');
+  const hariIni = getNamaHariIni();
+
+  if (aksi === 'mulaiKuliah') {
+    // Ambil data jadwal hari ini untuk ruangan ini
+    const jadwalR    = STATE.data.jadwal.find(j => j.Ruangan === namaR && j.Hari === hariIni);
+    const mataKuliah = jadwalR ? jadwalR['Nama Mata Kuliah'] : '';
+    const dosen      = jadwalR ? (jadwalR['Dosen Pengampu'] || '') : '';
+    const jamMulai   = jadwalR ? formatJam(jadwalR['Jam Mulai'])   : '';
+    const jamSelesai = jadwalR ? formatJam(jadwalR['Jam Selesai']) : '';
+    const kelas      = jadwalR ? (jadwalR['Kelas'] || KETUA_SESSION.kelas) : KETUA_SESSION.kelas;
+
+    STATUS_KULIAH_DATA[namaR] = { status:'Sedang Kuliah', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama, waktuUpdate:getJamSekarang() };
+    await apiPost('setStatusRuangan', { ruangan:namaR, statusBaru:'Sedang Kuliah', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama });
+    showToast(`✅ ${namaR} — Sedang Kuliah`, 'success');
+    drawStatusKuliah();
+
+  } else if (aksi === 'selesai' || aksi === 'batalBooking') {
+    STATUS_KULIAH_DATA[namaR] = {};
+    await apiPost('resetStatusRuangan', { ruangan:namaR, namaKetua:KETUA_SESSION.nama });
+    showToast(`⬜ ${namaR} — ${aksi==='selesai' ? 'Kuliah selesai' : 'Booking dibatalkan'}`, 'info');
+    drawStatusKuliah();
+
+  } else if (aksi === 'booking') {
+    tampilModalBooking(namaR);
   }
+}
+
+// Modal booking untuk ruangan kosong
+function tampilModalBooking(namaR) {
+  document.getElementById('bk-modal-wrap')?.remove();
+  const wrap = document.createElement('div');
+  wrap.id = 'bk-modal-wrap';
+  wrap.className = 'bk-overlay';
+  wrap.innerHTML = `
+    <div class="bk-modal">
+      <div class="bk-title">📅 Booking Ruangan</div>
+      <div class="bk-sub">📍 ${namaR}</div>
+      <div class="bk-field">
+        <label>Nama Ketua Kelas</label>
+        <input type="text" id="bk-ketua" value="${KETUA_SESSION.nama}" disabled>
+      </div>
+      <div class="bk-field">
+        <label>Kelas</label>
+        <input type="text" id="bk-kelas" value="${KETUA_SESSION.kelas}" disabled>
+      </div>
+      <div class="bk-field">
+        <label>Mata Kuliah <span style="color:#f87171;">*</span></label>
+        <input type="text" id="bk-matkul" placeholder="Nama mata kuliah...">
+      </div>
+      <div class="bk-field">
+        <label>Dosen <span style="color:#f87171;">*</span></label>
+        <input type="text" id="bk-dosen" placeholder="Nama dosen...">
+      </div>
+      <div class="bk-field bk-row">
+        <div>
+          <label>Jam Mulai <span style="color:#f87171;">*</span></label>
+          <input type="time" id="bk-jam-mulai">
+        </div>
+        <div>
+          <label>Jam Selesai <span style="color:#f87171;">*</span></label>
+          <input type="time" id="bk-jam-selesai">
+        </div>
+      </div>
+      <div class="bk-actions">
+        <button class="bk-cancel" onclick="document.getElementById('bk-modal-wrap').remove()">Batal</button>
+        <button class="bk-submit" onclick="submitBooking('${namaR}')">📅 Booking Sekarang</button>
+      </div>
+    </div>`;
+  wrap.addEventListener('click', e => { if (e.target === wrap) wrap.remove(); });
+  document.body.appendChild(wrap);
+}
+
+async function submitBooking(namaR) {
+  const mataKuliah = document.getElementById('bk-matkul')?.value.trim();
+  const dosen      = document.getElementById('bk-dosen')?.value.trim();
+  const jamMulai   = document.getElementById('bk-jam-mulai')?.value;
+  const jamSelesai = document.getElementById('bk-jam-selesai')?.value;
+
+  if (!mataKuliah || !dosen || !jamMulai || !jamSelesai) {
+    showToast('⚠️ Semua field wajib diisi', 'warning'); return;
+  }
+  if (jamSelesai <= jamMulai) {
+    showToast('⚠️ Jam selesai harus lebih dari jam mulai', 'warning'); return;
+  }
+
+  STATUS_KULIAH_DATA[namaR] = {
+    status:'Dibooking', mataKuliah, dosen, jamMulai, jamSelesai,
+    kelas:KETUA_SESSION.kelas, namaKetua:KETUA_SESSION.nama, waktuUpdate:getJamSekarang()
+  };
+  await apiPost('bookingRuangan', {
+    ruangan:namaR, statusBaru:'Dibooking', mataKuliah, dosen, jamMulai, jamSelesai,
+    kelas:KETUA_SESSION.kelas, namaKetua:KETUA_SESSION.nama
+  });
+  document.getElementById('bk-modal-wrap')?.remove();
+  showToast(`✅ ${namaR} berhasil dibooking!`, 'success');
   drawStatusKuliah();
 }
 
@@ -2522,6 +2623,108 @@ function logoutKetua() {
   localStorage.removeItem('ketua_session');
   showToast('👋 Logout berhasil', 'info');
   renderStatusKuliah();
+}
+
+
+// ================================================
+// RUANGAN (CRUD)
+// ================================================
+async function renderRuanganPage() {
+  updateTopbar('Ruangan', 'Kelola daftar ruangan yang tersedia untuk jadwal kuliah dan booking');
+  await loadAllData();
+  const container = document.getElementById('ruangan-content');
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="filter-bar-wrap">
+      <div class="filter-row">
+        <div class="filter-group" style="flex:1;">
+          <label class="filter-label">🔍 Cari Ruangan</label>
+          <input type="text" id="rng-search" class="filter-input" placeholder="Cari nama ruangan, keterangan..." oninput="renderRuanganTable()">
+        </div>
+        <button class="btn btn-primary" onclick="openRuanganModal()">➕ Tambah Ruangan</button>
+      </div>
+    </div>
+    <div id="rng-table-wrap"></div>`;
+  renderRuanganTable();
+}
+
+function renderRuanganTable() {
+  const wrap = document.getElementById('rng-table-wrap');
+  if (!wrap) return;
+  const search = (document.getElementById('rng-search')?.value || '').toLowerCase();
+  const filtered = STATE.data.ruangan.filter(r =>
+    !search || Object.values(r).some(v => String(v).toLowerCase().includes(search))
+  ).sort((a,b) => String(a['Nama Ruangan']).localeCompare(String(b['Nama Ruangan'])));
+
+  if (filtered.length === 0) {
+    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🚪</div><div class="empty-state-title">Belum ada data ruangan</div><div class="empty-state-text">Klik "Tambah Ruangan" untuk menambahkan ruangan baru</div></div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div class="nilai-table-container">
+      <table class="data-table data-table-center">
+        <thead><tr><th class="col-left">Nama Ruangan</th><th class="col-left">Keterangan</th><th>Aksi</th></tr></thead>
+        <tbody>
+          ${filtered.map(r => `
+            <tr>
+              <td class="col-left"><strong>${r['Nama Ruangan']}</strong></td>
+              <td class="col-left" style="color:var(--text-muted);">${r['Keterangan']||'-'}</td>
+              <td>
+                <div style="display:flex;gap:6px;justify-content:center;">
+                  <button class="btn-row-action edit" onclick='openRuanganModal(${JSON.stringify(r).replace(/'/g,"&apos;")})' title="Edit">✏️</button>
+                  <button class="btn-row-action delete" onclick="hapusRuangan('${r.ID}')" title="Hapus">🗑️</button>
+                </div>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function openRuanganModal(data) {
+  STATE.editingId = data ? data.ID : null;
+  document.getElementById('modal-ruangan-title').textContent = data ? 'Edit Ruangan' : 'Tambah Ruangan';
+  document.getElementById('ruangan-nama').value = data ? data['Nama Ruangan'] : '';
+  document.getElementById('ruangan-keterangan').value = data ? (data['Keterangan']||'') : '';
+  document.getElementById('modal-ruangan').classList.add('open');
+}
+
+function closeRuanganModal() {
+  document.getElementById('modal-ruangan').classList.remove('open');
+  STATE.editingId = null;
+}
+
+async function submitRuangan() {
+  const namaRuangan  = document.getElementById('ruangan-nama').value.trim();
+  const keterangan   = document.getElementById('ruangan-keterangan').value.trim();
+  if (!namaRuangan) { showToast('⚠️ Nama ruangan wajib diisi', 'warning'); return; }
+
+  const payload = { namaRuangan, keterangan };
+  if (STATE.editingId) {
+    payload.id = STATE.editingId;
+    await apiPost('editRuangan', payload);
+    const idx = STATE.data.ruangan.findIndex(r => r.ID === STATE.editingId);
+    if (idx > -1) STATE.data.ruangan[idx] = { ...STATE.data.ruangan[idx], 'Nama Ruangan': namaRuangan, Keterangan: keterangan };
+    showToast('✅ Ruangan berhasil diupdate', 'success');
+  } else {
+    const tempId = 'TEMP-' + Date.now();
+    await apiPost('addRuangan', payload);
+    STATE.data.ruangan.push({ ID: tempId, 'Nama Ruangan': namaRuangan, Keterangan: keterangan });
+    showToast('✅ Ruangan berhasil ditambahkan', 'success');
+  }
+  closeRuanganModal();
+  renderRuanganTable();
+  setTimeout(() => loadAllData(true), 1500);
+}
+
+async function hapusRuangan(id) {
+  if (!confirm('Yakin ingin menghapus ruangan ini? Jadwal yang menggunakan ruangan ini tidak ikut terhapus.')) return;
+  await apiPost('deleteRuangan', { id });
+  STATE.data.ruangan = STATE.data.ruangan.filter(r => r.ID !== id);
+  showToast('🗑️ Ruangan berhasil dihapus', 'warning');
+  renderRuanganTable();
 }
 
 // ================================================
