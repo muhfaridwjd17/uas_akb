@@ -272,6 +272,25 @@ function toggleTheme() {
   document.querySelectorAll('#theme-btn-top').forEach(b => b.textContent = next === 'dark' ? '🌙' : '☀️');
 }
 
+async function refreshHalaman() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.textContent = '⏳'; btn.disabled = true; }
+  try {
+    STATE.loaded = false; // paksa reload
+    // Kalau di status kuliah, reload status juga
+    if (STATE.currentPage === 'status-kuliah') {
+      await loadStatusKuliah();
+    } else if (STATE.currentPage === 'jadwal-publik') {
+      await loadStatusKuliah();
+    }
+    await loadAllData(true);
+    navigate(STATE.currentPage);
+    showToast('✅ Data berhasil dimuat ulang', 'success');
+  } finally {
+    if (btn) { btn.textContent = '🔄'; btn.disabled = false; }
+  }
+}
+
 function getGrade(score) {
   if (score >= 85) return { label: 'A', color: '#10B981', bobot: 4.0 };
   if (score >= 80) return { label: 'B+', color: '#22D3EE', bobot: 3.5 };
@@ -2041,39 +2060,72 @@ async function renderJadwalPublik() {
     document.body.appendChild(_globalTT);
   }
 
-  container.querySelectorAll('.jp-cell[data-ruangan]').forEach(cell => {
-    const src = cell.querySelector('.jp-tooltip');
-    if (!src) return;
+  // Pasang tooltip event delegation di document level
+  // supaya semua jp-cell di manapun (roster kelas dan section ruangan) dapat tooltip
+  if (!window._ttListenerPasang) {
+    window._ttListenerPasang = true;
 
-    cell.addEventListener('mouseenter', () => {
-      const isS = cell.classList.contains('jp-sedang');
-      const isB = cell.classList.contains('jp-booking');
-      _globalTT.innerHTML  = src.innerHTML;
-      _globalTT.style.background   = isS ? '#021a08' : isB ? '#020b2e' : '#0a0f1e';
-      _globalTT.style.border       = isS ? '1.5px solid #16a34a' : isB ? '1.5px solid #2563eb' : '1.5px solid #1e293b';
-      _globalTT.style.color        = isS ? '#bbf7d0' : isB ? '#bfdbfe' : '#e2e8f0';
-      _globalTT.style.display      = 'block';
+    document.addEventListener('mouseover', e => {
+      const cell = e.target.closest('.jp-cell[data-ruangan]');
+      if (!cell) return;
+      const ruangan  = cell.dataset.ruangan;
+      const statusD  = STATUS_KULIAH_DATA[ruangan] || {};
+      const sNow     = statusD.status || '';
+      const isS      = sNow === 'Sedang Dipakai';
+      const isB      = sNow === 'Dibooking';
+      // Build tooltip content dari STATUS_KULIAH_DATA langsung (selalu fresh)
+      const matkul   = isS||isB ? (statusD.mataKuliah||'') : (cell.querySelector('div')?.textContent||'');
+      const dosen    = statusD.dosen || '';
+      const kelas    = statusD.kelas || '';
+      const jmStart  = statusD.jamMulai || '';
+      const jmEnd    = statusD.jamSelesai || '';
+      const ketua    = statusD.namaKetua || '';
+      const ttColor  = isS ? '#4ade80' : isB ? '#60a5fa' : '#94a3b8';
+      const ttBg     = isS ? '#021a08' : isB ? '#020b2e' : '#0a0f1e';
+      const ttBdr    = isS ? '#16a34a' : isB ? '#2563eb' : '#1e293b';
+      const ttTitle  = isS ? '🟢 Sedang Dipakai' : isB ? '📅 Dibooking' : '📋 Info Ruangan';
+
+      // Ambil info dari cell kalau tidak ada di STATUS_KULIAH_DATA
+      const cellMK  = cell.querySelector('div:first-child')?.textContent?.trim() || '';
+      const cellDsn = cell.querySelectorAll('div')[1]?.textContent?.trim() || '';
+      const cellKls = cell.querySelectorAll('div')[2]?.textContent?.trim() || '';
+
+      _globalTT.innerHTML = `
+        <div style="font-size:11px;font-weight:700;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid ${ttBdr};color:${ttColor}">${ttTitle}</div>
+        <div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Mata Kuliah</span><span style="color:#e2e8f0;">${matkul||cellMK||'-'}</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Dosen</span><span style="color:#e2e8f0;">${dosen||cellDsn||'-'}</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Kelas</span><span style="color:#e2e8f0;">${kelas||cellKls||'-'}</span></div>
+        <div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Ruangan</span><span style="color:#e2e8f0;">${ruangan}</span></div>
+        ${jmStart ? `<div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Jam</span><span style="color:#e2e8f0;">${jmStart} – ${jmEnd}</span></div>` : ''}
+        ${ketua ? `<div style="display:flex;gap:8px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Ketua</span><span style="color:#e2e8f0;">${ketua}</span></div>` : ''}
+      `;
+      _globalTT.style.background = ttBg;
+      _globalTT.style.border     = `1.5px solid ${ttBdr}`;
+      _globalTT.style.display    = 'block';
     });
 
-    cell.addEventListener('mouseleave', () => {
+    document.addEventListener('mouseout', e => {
+      const cell = e.target.closest('.jp-cell[data-ruangan]');
+      if (!cell) return;
+      const to = e.relatedTarget;
+      if (to && (cell.contains(to) || to === _globalTT)) return;
       _globalTT.style.display = 'none';
     });
 
-    cell.addEventListener('mousemove', e => {
+    document.addEventListener('mousemove', e => {
+      if (_globalTT.style.display === 'none') return;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const tw = _globalTT.offsetWidth  || 250;
       const th = _globalTT.offsetHeight || 180;
-      const ox = 12; // offset dari kursor
-      const oy = 12;
-      let left = e.clientX + ox;
-      let top  = e.clientY + oy;
-      if (left + tw > vw - 8) left = e.clientX - tw - ox;
-      if (top  + th > vh - 8) top  = e.clientY - th - oy;
+      let left = e.clientX + 12;
+      let top  = e.clientY + 12;
+      if (left + tw > vw - 8) left = e.clientX - tw - 12;
+      if (top  + th > vh - 8) top  = e.clientY - th - 12;
       _globalTT.style.left = left + 'px';
       _globalTT.style.top  = top  + 'px';
     });
-  });
+  }
 
   // Auto-refresh jadwal publik tiap 20 detik untuk sinkron dengan status kuliah
   if (window._jadwalPubInterval) clearInterval(window._jadwalPubInterval);
