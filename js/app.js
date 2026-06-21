@@ -2040,92 +2040,7 @@ async function renderJadwalPublik() {
   html += '</div></div>';
   container.innerHTML = html;
 
-  // Tooltip global — satu elemen di body, pindah mengikuti mouse
-  let _globalTT = document.getElementById('jp-global-tooltip');
-  if (!_globalTT) {
-    _globalTT = document.createElement('div');
-    _globalTT.id = 'jp-global-tooltip';
-    _globalTT.style.cssText = [
-      'position:fixed',
-      'z-index:999999',
-      'display:none',
-      'pointer-events:none',
-      'min-width:230px',
-      'max-width:270px',
-      'border-radius:10px',
-      'padding:12px 14px',
-      'font-size:11px',
-      'font-family:var(--font-sans,sans-serif)',
-    ].join(';');
-    document.body.appendChild(_globalTT);
-  }
-
-  // Pasang tooltip event delegation di document level
-  // supaya semua jp-cell di manapun (roster kelas dan section ruangan) dapat tooltip
-  if (!window._ttListenerPasang) {
-    window._ttListenerPasang = true;
-
-    document.addEventListener('mouseover', e => {
-      const cell = e.target.closest('.jp-cell[data-ruangan]');
-      if (!cell) return;
-      const ruangan  = cell.dataset.ruangan;
-      const statusD  = STATUS_KULIAH_DATA[ruangan] || {};
-      const sNow     = statusD.status || '';
-      const isS      = sNow === 'Sedang Dipakai';
-      const isB      = sNow === 'Dibooking';
-      // Build tooltip content dari STATUS_KULIAH_DATA langsung (selalu fresh)
-      const matkul   = isS||isB ? (statusD.mataKuliah||'') : (cell.querySelector('div')?.textContent||'');
-      const dosen    = statusD.dosen || '';
-      const kelas    = statusD.kelas || '';
-      const jmStart  = statusD.jamMulai || '';
-      const jmEnd    = statusD.jamSelesai || '';
-      const ketua    = statusD.namaKetua || '';
-      const ttColor  = isS ? '#4ade80' : isB ? '#60a5fa' : '#94a3b8';
-      const ttBg     = isS ? '#021a08' : isB ? '#020b2e' : '#0a0f1e';
-      const ttBdr    = isS ? '#16a34a' : isB ? '#2563eb' : '#1e293b';
-      const ttTitle  = isS ? '🟢 Sedang Dipakai' : isB ? '📅 Dibooking' : '📋 Info Ruangan';
-
-      // Ambil info dari cell kalau tidak ada di STATUS_KULIAH_DATA
-      const cellMK  = cell.querySelector('div:first-child')?.textContent?.trim() || '';
-      const cellDsn = cell.querySelectorAll('div')[1]?.textContent?.trim() || '';
-      const cellKls = cell.querySelectorAll('div')[2]?.textContent?.trim() || '';
-
-      _globalTT.innerHTML = `
-        <div style="font-size:11px;font-weight:700;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid ${ttBdr};color:${ttColor}">${ttTitle}</div>
-        <div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Mata Kuliah</span><span style="color:#e2e8f0;">${matkul||cellMK||'-'}</span></div>
-        <div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Dosen</span><span style="color:#e2e8f0;">${dosen||cellDsn||'-'}</span></div>
-        <div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Kelas</span><span style="color:#e2e8f0;">${kelas||cellKls||'-'}</span></div>
-        <div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Ruangan</span><span style="color:#e2e8f0;">${ruangan}</span></div>
-        ${jmStart ? `<div style="display:flex;gap:8px;margin-bottom:5px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Jam</span><span style="color:#e2e8f0;">${jmStart} – ${jmEnd}</span></div>` : ''}
-        ${ketua ? `<div style="display:flex;gap:8px;font-size:11px;"><span style="flex-shrink:0;color:#475569;min-width:85px;font-weight:600;">Ketua</span><span style="color:#e2e8f0;">${ketua}</span></div>` : ''}
-      `;
-      _globalTT.style.background = ttBg;
-      _globalTT.style.border     = `1.5px solid ${ttBdr}`;
-      _globalTT.style.display    = 'block';
-    });
-
-    document.addEventListener('mouseout', e => {
-      const cell = e.target.closest('.jp-cell[data-ruangan]');
-      if (!cell) return;
-      const to = e.relatedTarget;
-      if (to && (cell.contains(to) || to === _globalTT)) return;
-      _globalTT.style.display = 'none';
-    });
-
-    document.addEventListener('mousemove', e => {
-      if (_globalTT.style.display === 'none') return;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const tw = _globalTT.offsetWidth  || 250;
-      const th = _globalTT.offsetHeight || 180;
-      let left = e.clientX + 12;
-      let top  = e.clientY + 12;
-      if (left + tw > vw - 8) left = e.clientX - tw - 12;
-      if (top  + th > vh - 8) top  = e.clientY - th - 12;
-      _globalTT.style.left = left + 'px';
-      _globalTT.style.top  = top  + 'px';
-    });
-  }
+  // Tooltip diinisialisasi di DOMContentLoaded
 
   // Auto-refresh jadwal publik tiap 20 detik untuk sinkron dengan status kuliah
   if (window._jadwalPubInterval) clearInterval(window._jadwalPubInterval);
@@ -3268,6 +3183,60 @@ function hapusAkunKetua(id) {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadSession();  // Load session pertama kali
+
+  // ===== TOOLTIP GLOBAL =====
+  // Dibuat sekali saat DOM ready, aktif di semua halaman
+  const _tt = document.createElement('div');
+  _tt.id = 'jp-global-tooltip';
+  _tt.style.cssText = 'position:fixed;z-index:999999;display:none;pointer-events:none;min-width:230px;max-width:270px;border-radius:10px;padding:12px 14px;font-size:11px;font-family:inherit;';
+  document.body.appendChild(_tt);
+  window._globalTT = _tt;
+
+  document.addEventListener('mouseover', e => {
+    const cell = e.target.closest('.jp-cell[data-ruangan]');
+    if (!cell) { return; }
+    const ruangan = cell.dataset.ruangan;
+    const sd  = STATUS_KULIAH_DATA[ruangan] || {};
+    const isS = sd.status === 'Sedang Dipakai';
+    const isB = sd.status === 'Dibooking';
+    const ttBg  = isS ? '#021a08' : isB ? '#020b2e' : '#0d1117';
+    const ttBdr = isS ? '#16a34a' : isB ? '#2563eb' : '#30363d';
+    const ttClr = isS ? '#4ade80' : isB ? '#60a5fa' : '#94a3b8';
+    const title = isS ? '🟢 Sedang Dipakai' : isB ? '📅 Dibooking' : '📋 Info Ruangan';
+    const divs  = cell.querySelectorAll('div');
+    const mk    = sd.mataKuliah || divs[0]?.textContent?.trim() || '-';
+    const dsn   = sd.dosen || divs[1]?.textContent?.trim() || '-';
+    const kls   = sd.kelas || divs[2]?.textContent?.trim() || '-';
+    const jam   = (sd.jamMulai && sd.jamSelesai) ? sd.jamMulai+' – '+sd.jamSelesai : '';
+    const ktua  = sd.namaKetua || '';
+    _tt.style.background = ttBg;
+    _tt.style.border     = '1.5px solid ' + ttBdr;
+    _tt.innerHTML = '<div style="font-size:11px;font-weight:700;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid '+ttBdr+';color:'+ttClr+'">'+title+'</div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:4px;font-size:10px;"><span style="color:#475569;min-width:80px;flex-shrink:0;font-weight:600;">Mata Kuliah</span><span style="color:#e2e8f0;">'+mk+'</span></div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:4px;font-size:10px;"><span style="color:#475569;min-width:80px;flex-shrink:0;font-weight:600;">Dosen</span><span style="color:#e2e8f0;">'+dsn+'</span></div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:4px;font-size:10px;"><span style="color:#475569;min-width:80px;flex-shrink:0;font-weight:600;">Kelas</span><span style="color:#e2e8f0;">'+kls+'</span></div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:4px;font-size:10px;"><span style="color:#475569;min-width:80px;flex-shrink:0;font-weight:600;">Ruangan</span><span style="color:#e2e8f0;">'+ruangan+'</span></div>'
+      + (jam ? '<div style="display:flex;gap:8px;margin-bottom:4px;font-size:10px;"><span style="color:#475569;min-width:80px;flex-shrink:0;font-weight:600;">Jam</span><span style="color:#e2e8f0;">'+jam+'</span></div>' : '')
+      + (ktua ? '<div style="display:flex;gap:8px;font-size:10px;"><span style="color:#475569;min-width:80px;flex-shrink:0;font-weight:600;">Ketua</span><span style="color:#e2e8f0;">'+ktua+'</span></div>' : '');
+    _tt.style.display = 'block';
+  });
+
+  document.addEventListener('mouseout', e => {
+    if (!e.target.closest('.jp-cell[data-ruangan]')) return;
+    _tt.style.display = 'none';
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (_tt.style.display === 'none') return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const tw = _tt.offsetWidth||250, th = _tt.offsetHeight||180;
+    let l = e.clientX + 12, t = e.clientY + 12;
+    if (l + tw > vw - 8) l = e.clientX - tw - 12;
+    if (t + th > vh - 8) t = e.clientY - th - 12;
+    _tt.style.left = l + 'px';
+    _tt.style.top  = t + 'px';
+  });
+  // ===== END TOOLTIP GLOBAL =====
   
   const savedTheme = localStorage.getItem('akademikap_theme') || 'dark';
   document.documentElement.setAttribute('data-theme', savedTheme);
