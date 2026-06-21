@@ -1902,25 +1902,21 @@ async function renderJadwalPublik() {
                     return `<td style="padding:2px;border:1.5px solid var(--border);background:var(--bg-elevated);text-align:center;"><span style="font-size:8px;color:var(--text-muted);writing-mode:vertical-rl;transform:rotate(180deg);">Ist</span></td>`;
                   }
                   if (rendered[i] === null) {
-                    // Cek apakah ruangan di slot ini sedang dibooking
-                    const ruanganSlot  = Object.keys(STATUS_KULIAH_DATA).find(r => {
-                      const sd = STATUS_KULIAH_DATA[r];
-                      if (sd?.status !== 'Dibooking' && sd?.status !== 'Sedang Kuliah') return false;
-                      return sd?.jamMulai <= s.mulai && sd?.jamSelesai > s.mulai;
-                    });
-                    return `<td style="padding:4px;border:1.5px solid var(--border);"></td>`;
+                    return `<td style="padding:6px 4px;border:1.5px solid var(--border);text-align:center;vertical-align:middle;">
+                      <span style="font-size:9px;color:var(--text-muted);font-weight:500;">Kosong</span>
+                    </td>`;
                   }
                   const { jadwal: j, span } = rendered[i];
                   const statusR   = STATUS_KULIAH_DATA[j.Ruangan] || {};
                   const statusNow = statusR.status || '';
-                  const isSedang  = statusNow === 'Sedang Kuliah';
+                  const isSedang  = statusNow === 'Sedang Dipakai';
                   const isBooking = statusNow === 'Dibooking';
                   const cellBg    = isSedang ? '#166534' : isBooking ? '#1e3a8a' : warna;
                   const statusBadge = isSedang
-                    ? `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;background:#4ade8025;color:#4ade80;border:1px solid #166534;">🟢 Sedang Kuliah</div>`
+                    ? `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;background:#4ade8025;color:#4ade80;border:1px solid #166534;">🟢 Sedang Dipakai</div>`
                     : isBooking
                     ? `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;background:#60a5fa25;color:#60a5fa;border:1px solid #1e3a8a;">📅 Dibooking</div>`
-                    : '';
+                    : `<div style="margin-top:5px;display:inline-block;font-size:9px;font-weight:600;padding:2px 7px;border-radius:4px;background:var(--bg-elevated);color:var(--text-muted);">⬜ Kosong</div>`;
                   return `<td colspan="${span}" style="padding:10px 8px;border:1.5px solid ${isSedang ? '#166534' : isBooking ? '#1e3a8a' : 'var(--border)'};background:${isSedang ? '#041c0e' : isBooking ? '#040d1c' : warna+'12'};vertical-align:middle;text-align:center;">
                     <div style="font-weight:800;font-size:11px;color:var(--text-primary);line-height:1.4;margin-bottom:4px;">${j['Nama Mata Kuliah']}</div>
                     <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px;">${j['Dosen Pengampu']||''}</div>
@@ -2155,12 +2151,13 @@ async function renderStatusKuliah() {
   await loadStatusKuliah();
   drawStatusKuliah();
 
-  // Auto-refresh tiap 60 detik
+  // Auto-refresh tiap 60 detik + cek jam lokal tiap 30 detik
   if (STATUS_INTERVAL) clearInterval(STATUS_INTERVAL);
   STATUS_INTERVAL = setInterval(async () => {
-    await loadStatusKuliah();
+    cekJamOtomatisLokal(); // cek jam lokal dulu (instan)
+    await loadStatusKuliah(); // ambil data terbaru dari server
     drawStatusKuliah();
-  }, 60000);
+  }, 30000); // tiap 30 detik supaya lebih responsif
 }
 
 async function loadStatusKuliah() {
@@ -2213,6 +2210,45 @@ function formatJam(jam) {
   return s;
 }
 
+
+// ================================================
+// CEK JAM OTOMATIS DI FRONTEND
+// ================================================
+function cekJamOtomatisLokal() {
+  const jamSekarang = getJamSekarang();
+  let adaPerubahan = false;
+
+  Object.keys(STATUS_KULIAH_DATA).forEach(ruangan => {
+    const d = STATUS_KULIAH_DATA[ruangan];
+    if (!d || !d.jamMulai || !d.jamSelesai) return;
+
+    // Dibooking + jam mulai sudah tiba → Sedang Dipakai
+    if (d.status === 'Dibooking' && jamSekarang >= d.jamMulai && jamSekarang < d.jamSelesai) {
+      STATUS_KULIAH_DATA[ruangan].status = 'Sedang Dipakai';
+      adaPerubahan = true;
+      showToast(`🟢 ${ruangan} — Kuliah dimulai! (${d.mataKuliah})`, 'success');
+      // Beritahu server
+      apiPost('setStatusRuangan', {
+        ruangan, statusBaru: 'Sedang Dipakai',
+        mataKuliah: d.mataKuliah, dosen: d.dosen,
+        jamMulai: d.jamMulai, jamSelesai: d.jamSelesai,
+        kelas: d.kelas, namaKetua: d.namaKetua
+      });
+    }
+
+    // Sedang Dipakai/Dibooking + jam selesai sudah lewat → Kosong
+    if ((d.status === 'Sedang Dipakai' || d.status === 'Dibooking') && jamSekarang >= d.jamSelesai) {
+      STATUS_KULIAH_DATA[ruangan] = {};
+      adaPerubahan = true;
+      showToast(`⬜ ${ruangan} — Kuliah selesai (${d.jamSelesai})`, 'info');
+      // Beritahu server
+      apiPost('resetStatusRuangan', { ruangan, namaKetua: d.namaKetua || '-' });
+    }
+  });
+
+  if (adaPerubahan) drawStatusKuliah();
+}
+
 function drawStatusKuliah() {
   const container = document.getElementById('status-kuliah-content');
   if (!container) return;
@@ -2262,7 +2298,7 @@ function drawStatusKuliah() {
 
   // Hitung stat
   const namaRuanganList = semuaRuangan.map(r => r['Nama Ruangan']);
-  const jmlSedang   = namaRuanganList.filter(r => STATUS_KULIAH_DATA[r]?.status === 'Sedang Kuliah').length;
+  const jmlSedang   = namaRuanganList.filter(r => STATUS_KULIAH_DATA[r]?.status === 'Sedang Dipakai').length;
   const jmlBooking  = namaRuanganList.filter(r => STATUS_KULIAH_DATA[r]?.status === 'Dibooking').length;
   const jmlKosong   = namaRuanganList.filter(r => {
     const s = STATUS_KULIAH_DATA[r]?.status;
@@ -2417,13 +2453,13 @@ function drawStatusKuliah() {
 
         // Tentukan state
         let state, tagText, pillText;
-        const isLocked = (statusNow === 'Sedang Kuliah' || statusNow === 'Dibooking')
+        const isLocked = (statusNow === 'Sedang Dipakai' || statusNow === 'Dibooking')
                       && statusD.namaKetua && statusD.namaKetua !== KETUA_SESSION.nama;
 
         if (isLocked) {
           state = 'terkunci'; tagText = 'Dikunci'; pillText = 'Terkunci';
-        } else if (statusNow === 'Sedang Kuliah') {
-          state = 'sedang-kuliah'; tagText = 'Sedang Kuliah'; pillText = 'Live';
+        } else if (statusNow === 'Sedang Dipakai') {
+          state = 'sedang-kuliah'; tagText = 'Sedang Dipakai'; pillText = 'Live';
         } else if (statusNow === 'Dibooking') {
           state = 'dibooking'; tagText = 'Dibooking'; pillText = 'Booking';
         } else if (adaJadwal) {
@@ -2434,7 +2470,7 @@ function drawStatusKuliah() {
 
         // Info di dalam card
         let infoHTML = '';
-        if (statusNow === 'Sedang Kuliah') {
+        if (statusNow === 'Sedang Dipakai') {
           infoHTML = `
             <div class="rc-info-label">Sedang Berlangsung</div>
             <div class="rc-info-matkul">${statusD.mataKuliah || (adaJadwal ? jadwalR[0]['Nama Mata Kuliah'] : '-')}</div>
@@ -2461,7 +2497,7 @@ function drawStatusKuliah() {
         // Corner icon
         const cornerSVG = isLocked
           ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
-          : statusNow === 'Sedang Kuliah'
+          : statusNow === 'Sedang Dipakai'
           ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`
           : statusNow === 'Dibooking'
           ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`
@@ -2473,7 +2509,7 @@ function drawStatusKuliah() {
         let btnHTML = '';
         if (isLocked) {
           btnHTML = `<button class="abtn locked" disabled>🔒 Dikunci</button>`;
-        } else if (statusNow === 'Sedang Kuliah') {
+        } else if (statusNow === 'Sedang Dipakai') {
           btnHTML = `<button class="abtn stop" onclick="aksiRuangan('selesai','${namaR}')">⏹ Selesai</button>`;
         } else if (statusNow === 'Dibooking') {
           btnHTML = `<button class="abtn stop" onclick="aksiRuangan('batalBooking','${namaR}')">✕ Batalkan</button>`;
@@ -2526,9 +2562,9 @@ async function aksiRuangan(aksi, namaR) {
     const jamSelesai = jadwalR ? formatJam(jadwalR['Jam Selesai']) : '';
     const kelas      = jadwalR ? (jadwalR['Kelas'] || KETUA_SESSION.kelas) : KETUA_SESSION.kelas;
 
-    STATUS_KULIAH_DATA[namaR] = { status:'Sedang Kuliah', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama, waktuUpdate:getJamSekarang() };
-    await apiPost('setStatusRuangan', { ruangan:namaR, statusBaru:'Sedang Kuliah', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama });
-    showToast(`✅ ${namaR} — Sedang Kuliah`, 'success');
+    STATUS_KULIAH_DATA[namaR] = { status:'Sedang Dipakai', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama, waktuUpdate:getJamSekarang() };
+    await apiPost('setStatusRuangan', { ruangan:namaR, statusBaru:'Sedang Dipakai', mataKuliah, dosen, jamMulai, jamSelesai, kelas, namaKetua:KETUA_SESSION.nama });
+    showToast(`✅ ${namaR} — Sedang Dipakai`, 'success');
     drawStatusKuliah();
 
   } else if (aksi === 'selesai' || aksi === 'batalBooking') {
