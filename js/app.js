@@ -1821,34 +1821,46 @@ async function renderJadwalPublik() {
       .jp-tooltip {
         display: none;
         position: absolute;
-        z-index: 999;
-        top: calc(100% + 6px);
+        z-index: 9999;
+        top: calc(100% + 8px);
         left: 50%;
         transform: translateX(-50%);
-        min-width: 220px;
-        background: #0d0d0d;
-        border: 1px solid #222;
+        min-width: 240px;
+        background: #111827;
         border-radius: 12px;
-        padding: 12px 14px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        padding: 14px 16px;
         text-align: left;
         pointer-events: none;
+        isolation: isolate;
       }
       .jp-cell:hover .jp-tooltip { display: block; }
       .jp-tt-title {
-        font-size: 11px; font-weight: 800; margin-bottom: 8px;
-        padding-bottom: 6px; border-bottom: 1px solid #222;
-        color: #e8e8e8;
+        font-size: 12px; font-weight: 800; margin-bottom: 10px;
+        padding-bottom: 8px; border-bottom: 1px solid #2d3748;
+        color: #f1f5f9; letter-spacing: 0.02em;
       }
       .jp-tt-row {
-        display: flex; gap: 8px; align-items: flex-start;
-        font-size: 10px; margin-bottom: 5px; color: #aaa;
+        display: flex; gap: 10px; align-items: flex-start;
+        font-size: 11px; margin-bottom: 6px;
       }
       .jp-tt-lbl {
-        flex-shrink: 0; color: #555; min-width: 90px;
+        flex-shrink: 0; color: #94a3b8; min-width: 80px; font-weight: 600;
       }
-      .jp-sedang .jp-tooltip { border-color: #166534; }
-      .jp-booking .jp-tooltip { border-color: #1e3a8a; }
+      .jp-tt-val { color: #e2e8f0; font-weight: 500; }
+      .jp-sedang .jp-tooltip {
+        background: #052e16;
+        border: 1.5px solid #166534;
+      }
+      .jp-sedang .jp-tt-title { color: #4ade80; border-bottom-color: #166534; }
+      .jp-sedang .jp-tt-lbl  { color: #4ade8099; }
+      .jp-sedang .jp-tt-val  { color: #dcfce7; }
+      .jp-booking .jp-tooltip {
+        background: #0f172a;
+        border: 1.5px solid #1e40af;
+      }
+      .jp-booking .jp-tt-title { color: #60a5fa; border-bottom-color: #1e40af; }
+      .jp-booking .jp-tt-lbl  { color: #60a5fa99; }
+      .jp-booking .jp-tt-val  { color: #dbeafe; }
       /* Cell kosong hover */
       .jp-cell-kosong {
         padding: 6px 4px; border: 1.5px solid var(--border);
@@ -1964,12 +1976,12 @@ async function renderJadwalPublik() {
                   const tooltipContent = (isSedang || isBooking) ? `
                     <div class="jp-tooltip">
                       <div class="jp-tt-title">${isSedang ? '🟢 Sedang Dipakai' : '📅 Dibooking'}</div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">📚 Mata Kuliah</span><span>${statusR.mataKuliah || j['Nama Mata Kuliah']}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">👤 Dosen</span><span>${statusR.dosen || j['Dosen Pengampu'] || '-'}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">🎓 Kelas</span><span>${statusR.kelas || j['Kelas'] || '-'}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">📍 Ruangan</span><span>${j.Ruangan}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">⏰ Jam</span><span>${statusR.jamMulai || formatJam(j['Jam Mulai'])} – ${statusR.jamSelesai || formatJam(j['Jam Selesai'])}</span></div>
-                      <div class="jp-tt-row"><span class="jp-tt-lbl">👤 Ketua</span><span>${statusR.namaKetua || '-'}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">Mata Kuliah</span><span class="jp-tt-val">${statusR.mataKuliah || j['Nama Mata Kuliah']}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">Dosen</span><span class="jp-tt-val">${statusR.dosen || j['Dosen Pengampu'] || '-'}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">Kelas</span><span class="jp-tt-val">${statusR.kelas || j['Kelas'] || '-'}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">Ruangan</span><span class="jp-tt-val">${j.Ruangan}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">Jam</span><span class="jp-tt-val">${statusR.jamMulai || formatJam(j['Jam Mulai'])} – ${statusR.jamSelesai || formatJam(j['Jam Selesai'])}</span></div>
+                      <div class="jp-tt-row"><span class="jp-tt-lbl">Ketua Kelas</span><span class="jp-tt-val">${statusR.namaKetua || '-'}</span></div>
                     </div>` : '';
 
                   return `<td colspan="${span}" class="jp-cell ${isSedang ? 'jp-sedang' : isBooking ? 'jp-booking' : ''}"
@@ -2386,65 +2398,66 @@ function drawStatusKuliah() {
       .hs-num{font-size:32px;font-weight:700;line-height:1;margin-bottom:4px;}
       .s-green .hs-num{color:#4ade80;} .s-amber .hs-num{color:#fbbf24;} .s-gray .hs-num{color:#aaa;} .s-blue .hs-num{color:#e2e8f0;}
       .hs-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#444;}
-      .rm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;}
-      .rc{border-radius:14px;overflow:hidden;position:relative;transition:transform .15s;}
-      .rc:hover{transform:translateY(-2px);}
-      .rc.kosong        {background:#0a0a0a;border:1px solid #1c1c1a;}
-      .rc.belum-kuliah  {background:#060f0a;border:1px solid #1a3a22;}
-      .rc.sedang-kuliah {background:#040f08;border:1px solid #166534;}
-      .rc.dibooking     {background:#060a18;border:1px solid #1e3a8a;}
-      .rc.terkunci      {background:#100d00;border:1px solid #92400e;}
-      .rc-corner{position:absolute;top:0;right:0;width:44px;height:44px;border-radius:0 14px 0 44px;display:flex;align-items:flex-start;justify-content:flex-end;padding:10px 10px 0 0;}
-      .rc.kosong        .rc-corner{background:#141412;color:#333;}
-      .rc.belum-kuliah  .rc-corner{background:#0a2018;color:#2d6a4f;}
-      .rc.sedang-kuliah .rc-corner{background:#0d2e1a;color:#4ade80;}
-      .rc.dibooking     .rc-corner{background:#0a1229;color:#60a5fa;}
-      .rc.terkunci      .rc-corner{background:#2b1e00;color:#fbbf24;}
-      .rc-body{padding:14px 14px 12px;}
-      .rc-name{font-size:15px;font-weight:700;color:#e8e8e8;margin-bottom:4px;margin-top:2px;}
-      .rc-tag{display:inline-block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:4px;margin-bottom:10px;}
-      .rc.kosong        .rc-tag{background:#141412;color:#444;border:1px solid #1c1c1a;}
-      .rc.belum-kuliah  .rc-tag{background:#0a2018;color:#2d6a4f;border:1px solid #1a3a22;}
-      .rc.sedang-kuliah .rc-tag{background:#0d2e1a;color:#4ade80;border:1px solid #166534;}
-      .rc.dibooking     .rc-tag{background:#0a1229;color:#60a5fa;border:1px solid #1e3a8a;}
-      .rc.terkunci      .rc-tag{background:#2b1e00;color:#fbbf24;border:1px solid #92400e;}
-      .rc-info{border-radius:8px;padding:8px 10px;margin-bottom:10px;border:1px solid;min-height:56px;display:flex;flex-direction:column;justify-content:center;}
-      .rc.kosong        .rc-info{background:#0d0d0b;border-color:#1a1a17;}
-      .rc.belum-kuliah  .rc-info{background:#060f08;border-color:#1a3a22;}
-      .rc.sedang-kuliah .rc-info{background:#061610;border-color:#1a3a22;}
-      .rc.dibooking     .rc-info{background:#060a18;border-color:#1e3a8a;}
-      .rc.terkunci      .rc-info{background:#100c00;border-color:#3a2e00;}
-      .rc-info-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;}
-      .rc.belum-kuliah  .rc-info-label{color:#2d6a4f;}
-      .rc.sedang-kuliah .rc-info-label{color:#4ade80;}
-      .rc.dibooking     .rc-info-label{color:#60a5fa;}
-      .rc.terkunci      .rc-info-label{color:#fbbf24;}
-      .rc-info-matkul{font-size:11px;font-weight:700;color:#e8e8e8;margin-bottom:2px;line-height:1.3;}
-      .rc-info-dosen{font-size:10px;color:#555;}
-      .rc-info-jam{font-size:10px;font-family:monospace;font-weight:600;margin-top:3px;}
-      .rc.belum-kuliah  .rc-info-jam{color:#2d6a4f;}
-      .rc.sedang-kuliah .rc-info-jam{color:#4ade80;}
-      .rc.dibooking     .rc-info-jam{color:#60a5fa;}
-      .rc-info-by{font-size:9px;color:#444;margin-top:2px;}
-      .rc-empty{font-size:10px;color:#2a2a2a;text-align:center;width:100%;}
-      .rc-footer{display:flex;align-items:center;gap:6px;}
-      .rc-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:600;padding:4px 8px;border-radius:100px;flex-shrink:0;}
-      .pill-dot{width:5px;height:5px;border-radius:50%;}
-      .rc.kosong        .rc-pill{background:#111;color:#444;border:1px solid #1c1c1a;}
-      .rc.belum-kuliah  .rc-pill{background:#0a2018;color:#2d6a4f;border:1px solid #1a3a22;}
-      .rc.sedang-kuliah .rc-pill{background:#0d2e1a;color:#4ade80;border:1px solid #166534;}
-      .rc.dibooking     .rc-pill{background:#0a1229;color:#60a5fa;border:1px solid #1e3a8a;}
-      .rc.terkunci      .rc-pill{background:#2b1e00;color:#fbbf24;border:1px solid #92400e;}
-      .rc.kosong        .pill-dot{background:#333;}
-      .rc.belum-kuliah  .pill-dot{background:#2d6a4f;}
-      .rc.sedang-kuliah .pill-dot{background:#4ade80;animation:sk-pulse 2s infinite;}
-      .rc.dibooking     .pill-dot{background:#60a5fa;animation:sk-pulse 2s infinite;}
-      .rc.terkunci      .pill-dot{background:#fbbf24;}
-      .abtn{font-size:10px;font-weight:600;padding:6px 8px;border-radius:7px;cursor:pointer;border:1px solid;flex:1;text-align:center;white-space:nowrap;background:transparent;}
-      .abtn.kuliah{color:#4ade80;border-color:#166534;} .abtn.kuliah:hover{background:#0d2e1a;}
-      .abtn.booking{color:#60a5fa;border-color:#1e3a8a;} .abtn.booking:hover{background:#060a18;}
-      .abtn.stop{color:#f87171;border-color:#7f1d1d;} .abtn.stop:hover{background:#1c0808;}
-      .abtn.locked{color:#2a2a2a;border-color:#1a1a1a;cursor:not-allowed;}
+      .rm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;}
+      .rc{border-radius:16px;overflow:hidden;position:relative;transition:transform .2s,box-shadow .2s;}
+      .rc:hover{transform:translateY(-3px);}
+      .rc.kosong        {background:#0f0f0f;border:1.5px solid #222;}
+      .rc.belum-kuliah  {background:#080f09;border:1.5px solid #1a3a22;}
+      .rc.sedang-dipakai{background:#04110a;border:1.5px solid #16a34a;}
+      .rc.dibooking     {background:#07091a;border:1.5px solid #2563eb;}
+      .rc.terkunci      {background:#120d00;border:1.5px solid #b45309;}
+      .rc-stripe{height:3px;width:100%;}
+      .rc.kosong         .rc-stripe{background:#222;}
+      .rc.belum-kuliah   .rc-stripe{background:#1a3a22;}
+      .rc.sedang-dipakai .rc-stripe{background:linear-gradient(90deg,#16a34a,#4ade80);}
+      .rc.dibooking      .rc-stripe{background:linear-gradient(90deg,#2563eb,#60a5fa);}
+      .rc.terkunci       .rc-stripe{background:#b45309;}
+      .rc-body{padding:16px 16px 14px;}
+      .rc-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;}
+      .rc-name{font-size:16px;font-weight:700;color:#f1f5f9;letter-spacing:-.01em;}
+      .rc-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:3px 9px;border-radius:20px;}
+      .rc.kosong         .rc-tag{background:#1a1a1a;color:#4b5563;}
+      .rc.belum-kuliah   .rc-tag{background:#052e16;color:#4ade80;}
+      .rc.sedang-dipakai .rc-tag{background:#052e16;color:#4ade80;}
+      .rc.dibooking      .rc-tag{background:#0f172a;color:#60a5fa;}
+      .rc.terkunci       .rc-tag{background:#1c1100;color:#fbbf24;}
+      .rc-info{border-radius:10px;padding:10px 12px;margin-bottom:12px;border:1px solid;min-height:62px;display:flex;flex-direction:column;justify-content:center;gap:2px;}
+      .rc.kosong         .rc-info{background:#141414;border-color:#222;}
+      .rc.belum-kuliah   .rc-info{background:#061208;border-color:#1a3a22;}
+      .rc.sedang-dipakai .rc-info{background:#051709;border-color:#16a34a55;}
+      .rc.dibooking      .rc-info{background:#060c1e;border-color:#2563eb55;}
+      .rc.terkunci       .rc-info{background:#110d00;border-color:#b4530955;}
+      .rc-info-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}
+      .rc.belum-kuliah   .rc-info-label{color:#4ade8088;}
+      .rc.sedang-dipakai .rc-info-label{color:#4ade80;}
+      .rc.dibooking      .rc-info-label{color:#60a5fa;}
+      .rc.terkunci       .rc-info-label{color:#fbbf24;}
+      .rc-info-matkul{font-size:12px;font-weight:700;color:#f1f5f9;line-height:1.35;margin-bottom:2px;}
+      .rc-info-dosen{font-size:11px;color:#64748b;}
+      .rc-info-jam{font-size:11px;font-family:monospace;font-weight:700;margin-top:4px;}
+      .rc.belum-kuliah   .rc-info-jam{color:#4ade8088;}
+      .rc.sedang-dipakai .rc-info-jam{color:#4ade80;}
+      .rc.dibooking      .rc-info-jam{color:#60a5fa;}
+      .rc-info-by{font-size:10px;color:#475569;margin-top:3px;}
+      .rc-empty{font-size:11px;color:#374151;text-align:center;width:100%;padding:4px 0;}
+      .rc-footer{display:flex;align-items:center;gap:8px;}
+      .rc-pill{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:5px 10px;border-radius:20px;flex-shrink:0;letter-spacing:.02em;}
+      .pill-dot{width:6px;height:6px;border-radius:50%;}
+      .rc.kosong         .rc-pill{background:#1a1a1a;color:#4b5563;}
+      .rc.belum-kuliah   .rc-pill{background:#052e16;color:#4ade80;}
+      .rc.sedang-dipakai .rc-pill{background:#052e16;color:#4ade80;}
+      .rc.dibooking      .rc-pill{background:#0f172a;color:#60a5fa;}
+      .rc.terkunci       .rc-pill{background:#1c1100;color:#fbbf24;}
+      .rc.kosong         .pill-dot{background:#4b5563;}
+      .rc.belum-kuliah   .pill-dot{background:#4ade8055;}
+      .rc.sedang-dipakai .pill-dot{background:#4ade80;animation:sk-pulse 2s infinite;box-shadow:0 0 6px #4ade80;}
+      .rc.dibooking      .pill-dot{background:#60a5fa;animation:sk-pulse 2s infinite;box-shadow:0 0 6px #60a5fa;}
+      .rc.terkunci       .pill-dot{background:#fbbf24;}
+      .abtn{font-size:11px;font-weight:700;padding:7px 10px;border-radius:9px;cursor:pointer;border:1.5px solid;flex:1;text-align:center;white-space:nowrap;background:transparent;letter-spacing:.01em;}
+      .abtn.kuliah {color:#4ade80;border-color:#16a34a;} .abtn.kuliah:hover {background:#052e16;}
+      .abtn.booking{color:#60a5fa;border-color:#2563eb;} .abtn.booking:hover{background:#0f172a;}
+      .abtn.stop   {color:#f87171;border-color:#991b1b;} .abtn.stop:hover   {background:#1c0505;}
+      .abtn.locked {color:#374151;border-color:#222;cursor:not-allowed;}
       /* Modal Booking */
       .bk-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);z-index:9999;display:flex;align-items:center;justify-content:center;}
       .bk-modal{background:#0d0d0d;border:1px solid #222;border-radius:18px;padding:24px;width:380px;max-width:92vw;}
@@ -2518,7 +2531,7 @@ function drawStatusKuliah() {
         if (isLocked) {
           state = 'terkunci'; tagText = 'Dikunci'; pillText = 'Terkunci';
         } else if (statusNow === 'Sedang Dipakai') {
-          state = 'sedang-kuliah'; tagText = 'Sedang Dipakai'; pillText = 'Live';
+          state = 'sedang-dipakai'; tagText = 'Sedang Dipakai'; pillText = 'Live';
         } else if (statusNow === 'Dibooking') {
           state = 'dibooking'; tagText = 'Dibooking'; pillText = 'Booking';
         } else if (adaJadwal) {
@@ -2579,10 +2592,12 @@ function drawStatusKuliah() {
         }
 
         return `<div class="rc ${state}">
-          <div class="rc-corner">${cornerSVG}</div>
+          <div class="rc-stripe"></div>
           <div class="rc-body">
-            <div class="rc-name">${namaR}</div>
-            <div class="rc-tag">${tagText}</div>
+            <div class="rc-head">
+              <div class="rc-name">${namaR}</div>
+              <div class="rc-tag">${tagText}</div>
+            </div>
             <div class="rc-info">${infoHTML}</div>
             <div class="rc-footer">
               <span class="rc-pill"><span class="pill-dot"></span>${pillText}</span>
