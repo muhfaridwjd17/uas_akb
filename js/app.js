@@ -1982,7 +1982,8 @@ async function renderJadwalPublik() {
                   return `<td colspan="${span}" class="jp-cell ${isSedang?'jp-sedang':isBooking?'jp-booking':''}"
                     data-ruangan="${j.Ruangan||''}"
                     style="padding:8px 6px;
-                      border:1.5px solid ${isSedang?'#16a34a':isBooking?'#2563eb':'var(--border)'};
+                      border:${isSedang?'2px solid #16a34a':isBooking?'2px solid #2563eb':'1px solid var(--border)'};
+                      outline:${isSedang?'1px solid #16a34a':isBooking?'1px solid #2563eb':'none'};
                       background:${isSedang?'#041c0e':isBooking?'#040d1c':warna+'10'};
                       vertical-align:middle;text-align:center;position:relative;">
                     ${tooltipContent}
@@ -2468,9 +2469,15 @@ function updateBadgeJadwalPublik() {
     const isSedang  = statusNow === 'Sedang Dipakai';
     const isBooking = statusNow === 'Dibooking';
 
-    // Update border & background cell
-    cell.style.border      = `1.5px solid ${isSedang ? '#16a34a' : isBooking ? '#2563eb' : 'var(--border)'}`;
-    cell.style.background  = isSedang ? '#041c0e' : isBooking ? '#040d1c' : '';
+    // Update border lengkap semua sisi + background
+    const borderColor = isSedang ? '#16a34a' : isBooking ? '#2563eb' : '';
+    const borderVal   = borderColor ? `2px solid ${borderColor}` : '';
+    cell.style.borderTop    = borderVal;
+    cell.style.borderBottom = borderVal;
+    cell.style.borderLeft   = borderVal;
+    cell.style.borderRight  = borderVal;
+    cell.style.outline      = borderColor ? `1px solid ${borderColor}` : '';
+    cell.style.background   = isSedang ? '#041c0e' : isBooking ? '#040d1c' : '';
 
     // Update badge
     const badge = cell.querySelector('.jp-status-badge');
