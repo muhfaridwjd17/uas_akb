@@ -2280,25 +2280,41 @@ function drawStatusKuliah() {
 
     <div class="hs-grid">
       <div class="hs s-green">
-        <div class="hs-icon"><i class="ti ti-door-enter" aria-hidden="true"></i></div>
+        <div class="hs-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4l-6 4v12l6 4V4z"/>
+          </svg>
+        </div>
         <span class="hs-badge">Aktif</span>
         <div class="hs-num">${jmlDipakai}</div>
         <div class="hs-lbl">Sedang dipakai</div>
       </div>
       <div class="hs s-amber">
-        <div class="hs-icon"><i class="ti ti-lock" aria-hidden="true"></i></div>
+        <div class="hs-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </div>
         <span class="hs-badge">Kunci</span>
         <div class="hs-num">${jmlTerkunci}</div>
         <div class="hs-lbl">Terkunci</div>
       </div>
       <div class="hs s-gray">
-        <div class="hs-icon"><i class="ti ti-door" aria-hidden="true"></i></div>
+        <div class="hs-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4l-6 4v12l6 4V4z"/>
+          </svg>
+        </div>
         <span class="hs-badge">Bebas</span>
         <div class="hs-num">${jmlKosong}</div>
         <div class="hs-lbl">Kosong</div>
       </div>
       <div class="hs s-blue">
-        <div class="hs-icon"><i class="ti ti-building" aria-hidden="true"></i></div>
+        <div class="hs-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
         <span class="hs-badge">Total</span>
         <div class="hs-num">${semuaRuangan.length}</div>
         <div class="hs-lbl">Semua ruangan</div>
@@ -2307,8 +2323,9 @@ function drawStatusKuliah() {
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
       <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#444;">Status ruangan</span>
-      <button onclick="resetSemuaStatusRuangan()" style="font-size:11px;color:#555;background:transparent;border:1px solid #222;border-radius:8px;padding:4px 12px;cursor:pointer;">
-        <i class="ti ti-refresh" style="font-size:11px;vertical-align:-1px" aria-hidden="true"></i> Reset semua
+      <button onclick="resetSemuaStatusRuangan()" style="font-size:11px;color:#555;background:transparent;border:1px solid #222;border-radius:8px;padding:4px 12px;cursor:pointer;display:flex;align-items:center;gap:5px;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Reset semua
       </button>
     </div>
 
@@ -2319,12 +2336,16 @@ function drawStatusKuliah() {
         const isOwner = isTerpakai && data.diklikkOleh === KETUA_SESSION.nama;
         const isLocked = isTerpakai && !isOwner;
         const state = isLocked ? 'terkunci' : isTerpakai ? 'dipakai' : 'kosong';
-        const cornerIcon = isLocked ? 'ti-lock' : isTerpakai ? 'ti-circle-check' : 'ti-door';
         const tagText = isLocked ? 'Dikunci ketua lain' : isTerpakai ? 'Dipakai · Kamu' : 'Kosong';
         const pillText = isLocked ? 'Terkunci' : isTerpakai ? 'Live' : 'Bebas';
+        const cornerSVG = isLocked
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>`
+          : isTerpakai
+          ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`
+          : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 4h3a2 2 0 0 1 2 2v14"/><path d="M2 20h3"/><path d="M13 20h9"/><path d="M10 12v.01"/><path d="M13 4l-6 4v12l6 4V4z"/></svg>`;
 
         return `<div class="rc ${state}">
-          <div class="rc-corner"><i class="ti ${cornerIcon}" aria-hidden="true"></i></div>
+          <div class="rc-corner">${cornerSVG}</div>
           <div class="rc-body">
             <div class="rc-name">${ruangan}</div>
             <div class="rc-tag">${tagText}</div>
@@ -2338,7 +2359,7 @@ function drawStatusKuliah() {
             <div class="rc-footer">
               <span class="rc-pill"><span class="pill-dot"></span>${pillText}</span>
               ${isLocked
-                ? `<button class="abtn locked" disabled><i class="ti ti-lock" style="font-size:10px;vertical-align:-1px" aria-hidden="true"></i> Dikunci</button>`
+                ? `<button class="abtn locked" disabled>🔒 Dikunci</button>`
                 : `<button class="abtn ${isTerpakai ? 'stop' : 'go'}" onclick="toggleStatusRuangan('${ruangan}', ${isTerpakai})">
                     ${isTerpakai ? '⏹ Kosongkan' : '▶ Aktifkan'}
                   </button>`
