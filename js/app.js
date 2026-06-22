@@ -1772,26 +1772,51 @@ async function renderJadwalPublik() {
 
   const jadwal = STATE.data.jadwal;
 
-  // Isi filter dropdown kelas
+  // Isi filter dropdown kelas & ruangan
   const kelasEl = document.getElementById('jadwal-publik-filter-kelas');
   const ruanganEl = document.getElementById('jadwal-publik-filter-ruangan');
-  if (kelasEl && kelasEl.options.length <= 1) {
+
+  // Simpan pilihan sebelumnya supaya tidak reset saat re-render
+  const savedKelas = kelasEl?.value || 'all';
+  const savedRuangan = ruanganEl?.value || 'all';
+
+  // Selalu rebuild dropdown agar sinkron dengan data master terbaru
+  if (kelasEl) {
+    kelasEl.innerHTML = '<option value="all">— Semua Kelas —</option>';
     [...new Set(jadwal.map(j => j.Kelas).filter(Boolean))].sort().forEach(k => {
-      kelasEl.innerHTML += `<option value="${k}">${k}</option>`;
+      kelasEl.innerHTML += `<option value="${k}"${savedKelas === k ? ' selected' : ''}>${k}</option>`;
     });
   }
-  if (ruanganEl && ruanganEl.options.length <= 1) {
-    [...new Set(jadwal.map(j => j.Ruangan).filter(Boolean))].sort().forEach(r => {
-      ruanganEl.innerHTML += `<option value="${r}">${r}</option>`;
+  // Dropdown ruangan: pakai master Ruangan, fallback ke data jadwal
+  if (ruanganEl) {
+    ruanganEl.innerHTML = '<option value="all">— Semua Ruangan —</option>';
+    const masterRuangan = STATE.data.ruangan.map(r => r['Nama Ruangan']).filter(Boolean).sort();
+    const sumberRuangan = masterRuangan.length > 0
+      ? masterRuangan
+      : [...new Set(jadwal.map(j => j.Ruangan).filter(Boolean))].sort();
+    sumberRuangan.forEach(r => {
+      ruanganEl.innerHTML += `<option value="${r}"${savedRuangan === r ? ' selected' : ''}>${r}</option>`;
     });
   }
 
   const fKelas = kelasEl?.value || 'all';
   const fRuangan = ruanganEl?.value || 'all';
-  const filtered = jadwal.filter(j =>
-    (fKelas === 'all' || j.Kelas === fKelas) &&
-    (fRuangan === 'all' || j.Ruangan === fRuangan)
-  );
+
+  // Ambil nomor/kode ruangan: bagian sebelum tanda kurung, trim, lowercase
+  // Contoh: "AN 206 (LAB SIMULASI)" → "an 206", "AN 206" → "an 206"
+  function kodeRuangan(nama) {
+    return (nama || '').replace(/\(.*\)/, '').trim().toLowerCase();
+  }
+
+  // Filter ruangan: cocokkan nomor ruangan saja (abaikan keterangan dalam kurung)
+  const filtered = jadwal.filter(j => {
+    const matchKelas = fKelas === 'all' || j.Kelas === fKelas;
+    let matchRuangan = fRuangan === 'all';
+    if (!matchRuangan) {
+      matchRuangan = kodeRuangan(j.Ruangan) === kodeRuangan(fRuangan);
+    }
+    return matchKelas && matchRuangan;
+  });
 
   if (filtered.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📌</div><div class="empty-state-title">Belum ada jadwal</div><div class="empty-state-text">Tambahkan jadwal terlebih dahulu di menu Jadwal Kuliah</div></div>`;
@@ -2827,32 +2852,32 @@ function drawStatusKuliah() {
       if (masuk.length > 0) {
         panelHTML += '<div style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:10px;">📨 Permintaan Booking Masuk (' + masuk.length + ')</div>';
         masuk.forEach(p => {
-          panelHTML += `
+          panelHTML += \`
             <div style="background:#0f172a;border:1.5px solid #fbbf24;border-radius:12px;padding:14px;margin-bottom:10px;">
               <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                 <div>
                   <div style="font-size:12px;font-weight:700;color:#f1f5f9;margin-bottom:4px;">
-                    🎓 ${p['Kelas Peminta']} — ${p['Ketua Peminta']}
+                    🎓 \${p['Kelas Peminta']} — \${p['Ketua Peminta']}
                   </div>
-                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📚 ${p['Mata Kuliah']}</div>
-                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">👤 ${p['Dosen']}</div>
-                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📍 ${p['Ruangan']} · ⏰ ${p['Jam Mulai']} – ${p['Jam Selesai']}</div>
-                  ${p['Pesan'] ? '<div style="font-size:10px;color:#64748b;margin-top:4px;">💬 ' + p['Pesan'] + '</div>' : ''}
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📚 \${p['Mata Kuliah']}</div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">👤 \${p['Dosen']}</div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📍 \${p['Ruangan']} · ⏰ \${p['Jam Mulai']} – \${p['Jam Selesai']}</div>
+                  \${p['Pesan'] ? '<div style="font-size:10px;color:#64748b;margin-top:4px;">💬 ' + p['Pesan'] + '</div>' : ''}
                 </div>
                 <div style="display:flex;gap:6px;flex-shrink:0;">
-                  <button onclick="accPermintaan('${p.ID}','${p['Ruangan']}')"
+                  <button onclick="accPermintaan('\${p.ID}',''\${p['Ruangan']}'')"
                     style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;
                     background:#052e16;color:#4ade80;border:1.5px solid #16a34a;">
                     ✅ ACC
                   </button>
-                  <button onclick="tolakPermintaan('${p.ID}')"
+                  <button onclick="tolakPermintaan('\${p.ID}')"
                     style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;
                     background:#1c0505;color:#f87171;border:1.5px solid #991b1b;">
                     ❌ Tolak
                   </button>
                 </div>
               </div>
-            </div>`;
+            </div>\`;
         });
       }
 
@@ -2863,19 +2888,16 @@ function drawStatusKuliah() {
         keluarAktif.forEach(p => {
           const warna  = p.Status === 'Disetujui' ? '#4ade80' : p.Status === 'Ditolak' ? '#f87171' : '#fbbf24';
           const icon   = p.Status === 'Disetujui' ? '✅' : p.Status === 'Ditolak' ? '❌' : '⏳';
-          panelHTML += `
-            <div style="background:var(--bg-elevated);border:1px solid ${warna}44;border-radius:10px;padding:12px;margin-bottom:8px;" id="notif-${p.ID}">
+          panelHTML += \`
+            <div style="background:var(--bg-elevated);border:1px solid \${warna}44;border-radius:10px;padding:12px;margin-bottom:8px;">
               <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div style="flex:1;">
-                  <div style="font-size:11px;font-weight:700;color:#f1f5f9;">📍 ${p['Ruangan']} — ${p['Mata Kuliah']}</div>
-                  <div style="font-size:10px;color:#64748b;margin-top:2px;">⏰ ${p['Jam Mulai']} – ${p['Jam Selesai']} · ke ${p['Kelas Pemilik']}</div>
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:#f1f5f9;">📍 \${p['Ruangan']} — \${p['Mata Kuliah']}</div>
+                  <div style="font-size:10px;color:#64748b;margin-top:2px;">⏰ \${p['Jam Mulai']} – \${p['Jam Selesai']} · ke \${p['Kelas Pemilik']}</div>
                 </div>
-                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-                  <div style="font-size:11px;font-weight:700;color:${warna};">${icon} ${p.Status}</div>
-                  <button onclick="hapusNotifikasiBooking('${p.ID}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:#64748b;padding:4px;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='${warna}22';this.style.color='${warna}';" onmouseout="this.style.background='none';this.style.color='#64748b';" title="Hapus notifikasi">✕</button>
-                </div>
+                <div style="font-size:11px;font-weight:700;color:\${warna};">\${icon} \${p.Status}</div>
               </div>
-            </div>`;
+            </div>\`;
         });
       }
 
@@ -2912,13 +2934,7 @@ function drawStatusKuliah() {
 
         // Pakai jadwal kelas sendiri untuk tampilan card
         const jadwalR   = adaJadwalSendiri ? jadwalKelasSendiri : [];
-        
-        // Cek apakah ada jadwal yang BELUM SELESAI
-        const jamSkrg2 = getJamSekarang();
-        const adaJadwalBelumSelesai = jadwalKelasSendiri.some(j => 
-          formatJam(j['Jam Selesai']) > jamSkrg2
-        );
-        const adaJadwal = adaJadwalBelumSelesai;
+        const adaJadwal = adaJadwalSendiri;
 
         // Tentukan state
         let state, tagText, pillText;
@@ -2930,17 +2946,7 @@ function drawStatusKuliah() {
         } else if (statusNow === 'Dibooking') {
           state = 'dibooking'; tagText = 'Dibooking'; pillText = 'Booking';
         } else if (adaJadwal) {
-          // Ada jadwal tapi belum dimulai atau masih berlangsung
-          const jadwalBelumDimulai = jadwalKelasSendiri.find(j => formatJam(j['Jam Mulai']) > jamSkrg2);
-          const jadwalSedangBerlangsung = jadwalKelasSendiri.find(j => 
-            formatJam(j['Jam Mulai']) <= jamSkrg2 && formatJam(j['Jam Selesai']) > jamSkrg2
-          );
-          
-          if (jadwalSedangBerlangsung) {
-            state = 'sedang-berlangsung-kelas'; tagText = 'Sedang Digunakan'; pillText = 'Live';
-          } else {
-            state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
-          }
+          state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
         } else {
           state = 'kosong'; tagText = 'Kosong'; pillText = 'Bebas';
         }
@@ -2976,22 +2982,9 @@ function drawStatusKuliah() {
             <div class="rc-info-dosen">${jadwalR[0]['Dosen Pengampu']||'-'}</div>
             <div class="rc-info-jam" style="margin-top:5px;">${formatJam(jadwalR[0]['Jam Mulai'])} – ${formatJam(jadwalR[0]['Jam Selesai'])}</div>`;
         } else {
-          // Cek jadwal sendiri yang sudah lewat (riwayat)
-          const jadwalSendiriSelesai = jadwalKelasSendiri.filter(j => 
-            formatJam(j['Jam Selesai']) <= jamSkrg2
-          ).sort((a,b) => formatJam(b['Jam Selesai']).localeCompare(formatJam(a['Jam Selesai'])))[0];
-          
-          // Atau cek jadwal kelas lain di ruangan ini hari ini
+          // Cek jadwal kelas lain di ruangan ini hari ini
           const jadwalKelasLainHariIni = jadwalRuanganHariIni.filter(j => j.Kelas !== KETUA_SESSION.kelas);
-          
-          if (jadwalSendiriSelesai) {
-            // Tampilkan riwayat jadwal sendiri yang sudah selesai
-            infoHTML = `
-              <div class="rc-info-label" style="color:#64748b;font-size:8px;">RIWAYAT JADWAL HARI INI</div>
-              <div class="rc-info-matkul" style="color:#cbd5e1;font-size:11px;">${jadwalSendiriSelesai['Nama Mata Kuliah']}</div>
-              <div class="rc-info-dosen" style="color:#64748b;">${jadwalSendiriSelesai['Dosen Pengampu']||'-'}</div>
-              <div style="font-size:9px;color:#64748b;margin-top:3px;">✓ Sudah selesai · ${formatJam(jadwalSendiriSelesai['Jam Mulai'])} – ${formatJam(jadwalSendiriSelesai['Jam Selesai'])}</div>`;
-          } else if (jadwalKelasLainHariIni.length > 0) {
+          if (jadwalKelasLainHariIni.length > 0) {
             // Ada jadwal kelas lain tapi ruangan belum dipakai → bisa booking
             const jkl = jadwalKelasLainHariIni[0];
             infoHTML = `
@@ -3255,25 +3248,6 @@ function tolakPermintaan(id) {
   apiPost('tolakPermintaan', { id, alasan, namaKetua: KETUA_SESSION.nama });
   showToast('❌ Permintaan booking ditolak', 'info');
   drawStatusKuliah();
-}
-
-function hapusNotifikasiBooking(id) {
-  const notifElement = document.getElementById(`notif-${id}`);
-  if (notifElement) {
-    // Animasi fade out
-    notifElement.style.transition = 'opacity 0.3s ease';
-    notifElement.style.opacity = '0';
-    
-    // Hapus dari DOM setelah animasi selesai
-    setTimeout(() => {
-      notifElement.remove();
-      showToast('🗑️ Notifikasi dihapus', 'info');
-    }, 300);
-    
-    // Hapus dari data PERMINTAAN_DATA juga
-    const idx = (PERMINTAAN_DATA.keluar || []).findIndex(p => p.ID === id);
-    if (idx > -1) PERMINTAAN_DATA.keluar.splice(idx, 1);
-  }
 }
 
 async function resetSemuaStatusRuangan() {
