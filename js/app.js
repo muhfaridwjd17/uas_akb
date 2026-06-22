@@ -1781,25 +1781,17 @@ async function renderJadwalPublik() {
     });
   }
   if (ruanganEl && ruanganEl.options.length <= 1) {
-    const masterRuangan = STATE.data.ruangan.map(r => r['Nama Ruangan']).filter(Boolean).sort();
-    const sumberRuangan = masterRuangan.length > 0
-      ? masterRuangan
-      : [...new Set(jadwal.map(j => j.Ruangan).filter(Boolean))].sort();
-    sumberRuangan.forEach(r => {
+    [...new Set(jadwal.map(j => j.Ruangan).filter(Boolean))].sort().forEach(r => {
       ruanganEl.innerHTML += `<option value="${r}">${r}</option>`;
     });
   }
 
   const fKelas = kelasEl?.value || 'all';
   const fRuangan = ruanganEl?.value || 'all';
-  function kodeRuangan(nama) {
-    return (nama || '').replace(/\(.*\)/g, '').trim().toLowerCase();
-  }
-  const filtered = jadwal.filter(j => {
-    const matchKelas = fKelas === 'all' || j.Kelas === fKelas;
-    const matchRuangan = fRuangan === 'all' || kodeRuangan(j.Ruangan) === kodeRuangan(fRuangan);
-    return matchKelas && matchRuangan;
-  });
+  const filtered = jadwal.filter(j =>
+    (fKelas === 'all' || j.Kelas === fKelas) &&
+    (fRuangan === 'all' || j.Ruangan === fRuangan)
+  );
 
   if (filtered.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📌</div><div class="empty-state-title">Belum ada jadwal</div><div class="empty-state-text">Tambahkan jadwal terlebih dahulu di menu Jadwal Kuliah</div></div>`;
@@ -2938,17 +2930,7 @@ function drawStatusKuliah() {
         } else if (statusNow === 'Dibooking') {
           state = 'dibooking'; tagText = 'Dibooking'; pillText = 'Booking';
         } else if (adaJadwal) {
-          // Ada jadwal tapi belum dimulai atau masih berlangsung
-          const jadwalBelumDimulai = jadwalKelasSendiri.find(j => formatJam(j['Jam Mulai']) > jamSkrg2);
-          const jadwalSedangBerlangsung = jadwalKelasSendiri.find(j => 
-            formatJam(j['Jam Mulai']) <= jamSkrg2 && formatJam(j['Jam Selesai']) > jamSkrg2
-          );
-          
-          if (jadwalSedangBerlangsung) {
-            state = 'sedang-berlangsung-kelas'; tagText = 'Sedang Digunakan'; pillText = 'Live';
-          } else {
-            state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
-          }
+          state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
         } else {
           state = 'kosong'; tagText = 'Kosong'; pillText = 'Bebas';
         }
