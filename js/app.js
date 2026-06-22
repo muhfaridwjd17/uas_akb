@@ -2931,17 +2931,7 @@ function drawStatusKuliah() {
         } else if (statusNow === 'Dibooking') {
           state = 'dibooking'; tagText = 'Dibooking'; pillText = 'Booking';
         } else if (adaJadwal) {
-          // Ada jadwal tapi belum dimulai atau masih berlangsung
-          const jadwalBelumDimulai = jadwalKelasSendiri.find(j => formatJam(j['Jam Mulai']) > jamSkrg2);
-          const jadwalSedangBerlangsung = jadwalKelasSendiri.find(j => 
-            formatJam(j['Jam Mulai']) <= jamSkrg2 && formatJam(j['Jam Selesai']) > jamSkrg2
-          );
-          
-          if (jadwalSedangBerlangsung) {
-            state = 'sedang-berlangsung-kelas'; tagText = 'Sedang Digunakan'; pillText = 'Live';
-          } else {
-            state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
-          }
+          state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
         } else {
           state = 'kosong'; tagText = 'Kosong'; pillText = 'Bebas';
         }
