@@ -2832,12 +2832,12 @@ function drawStatusKuliah() {
               <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                 <div>
                   <div style="font-size:12px;font-weight:700;color:#f1f5f9;margin-bottom:4px;">
-                    🎓 \${p['Kelas Peminta']} — \${p['Ketua Peminta']}
+                    🎓 ${p['Kelas Peminta']} — ${p['Ketua Peminta']}
                   </div>
-                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📚 \${p['Mata Kuliah']}</div>
-                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">👤 \${p['Dosen']}</div>
-                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📍 \${p['Ruangan']} · ⏰ \${p['Jam Mulai']} – \${p['Jam Selesai']}</div>
-                  \${p['Pesan'] ? '<div style="font-size:10px;color:#64748b;margin-top:4px;">💬 ' + p['Pesan'] + '</div>' : ''}
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📚 ${p['Mata Kuliah']}</div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">👤 ${p['Dosen']}</div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📍 ${p['Ruangan']} · ⏰ ${p['Jam Mulai']} – ${p['Jam Selesai']}</div>
+                  ${p['Pesan'] ? '<div style="font-size:10px;color:#64748b;margin-top:4px;">💬 ' + p['Pesan'] + '</div>' : ''}
                 </div>
                 <div style="display:flex;gap:6px;flex-shrink:0;">
                   <button onclick="accPermintaan('${p.ID}','${p['Ruangan']}')"
@@ -2845,7 +2845,7 @@ function drawStatusKuliah() {
                     background:#052e16;color:#4ade80;border:1.5px solid #16a34a;">
                     ✅ ACC
                   </button>
-                  <button onclick="tolakPermintaan('\${p.ID}')"
+                  <button onclick="tolakPermintaan('${p.ID}')"
                     style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;
                     background:#1c0505;color:#f87171;border:1.5px solid #991b1b;">
                     ❌ Tolak
@@ -2864,13 +2864,13 @@ function drawStatusKuliah() {
           const warna  = p.Status === 'Disetujui' ? '#4ade80' : p.Status === 'Ditolak' ? '#f87171' : '#fbbf24';
           const icon   = p.Status === 'Disetujui' ? '✅' : p.Status === 'Ditolak' ? '❌' : '⏳';
           panelHTML += `
-            <div style="background:var(--bg-elevated);border:1px solid \${warna}44;border-radius:10px;padding:12px;margin-bottom:8px;">
+            <div style="background:var(--bg-elevated);border:1px solid ${warna}44;border-radius:10px;padding:12px;margin-bottom:8px;">
               <div style="display:flex;align-items:center;justify-content:space-between;">
                 <div>
-                  <div style="font-size:11px;font-weight:700;color:#f1f5f9;">📍 \${p['Ruangan']} — \${p['Mata Kuliah']}</div>
-                  <div style="font-size:10px;color:#64748b;margin-top:2px;">⏰ \${p['Jam Mulai']} – \${p['Jam Selesai']} · ke \${p['Kelas Pemilik']}</div>
+                  <div style="font-size:11px;font-weight:700;color:#f1f5f9;">📍 ${p['Ruangan']} — ${p['Mata Kuliah']}</div>
+                  <div style="font-size:10px;color:#64748b;margin-top:2px;">⏰ ${p['Jam Mulai']} – ${p['Jam Selesai']} · ke ${p['Kelas Pemilik']}</div>
                 </div>
-                <div style="font-size:11px;font-weight:700;color:\${warna};">\${icon} \${p.Status}</div>
+                <div style="font-size:11px;font-weight:700;color:${warna};">${icon} ${p.Status}</div>
               </div>
             </div>`;
         });
