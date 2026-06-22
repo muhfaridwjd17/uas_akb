@@ -2864,13 +2864,16 @@ function drawStatusKuliah() {
           const warna  = p.Status === 'Disetujui' ? '#4ade80' : p.Status === 'Ditolak' ? '#f87171' : '#fbbf24';
           const icon   = p.Status === 'Disetujui' ? '✅' : p.Status === 'Ditolak' ? '❌' : '⏳';
           panelHTML += `
-            <div style="background:var(--bg-elevated);border:1px solid ${warna}44;border-radius:10px;padding:12px;margin-bottom:8px;">
+            <div style="background:var(--bg-elevated);border:1px solid ${warna}44;border-radius:10px;padding:12px;margin-bottom:8px;" id="notif-${p.ID}">
               <div style="display:flex;align-items:center;justify-content:space-between;">
-                <div>
+                <div style="flex:1;">
                   <div style="font-size:11px;font-weight:700;color:#f1f5f9;">📍 ${p['Ruangan']} — ${p['Mata Kuliah']}</div>
                   <div style="font-size:10px;color:#64748b;margin-top:2px;">⏰ ${p['Jam Mulai']} – ${p['Jam Selesai']} · ke ${p['Kelas Pemilik']}</div>
                 </div>
-                <div style="font-size:11px;font-weight:700;color:${warna};">${icon} ${p.Status}</div>
+                <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+                  <div style="font-size:11px;font-weight:700;color:${warna};">${icon} ${p.Status}</div>
+                  <button onclick="hapusNotifikasiBooking('${p.ID}')" style="background:none;border:none;cursor:pointer;font-size:16px;color:#64748b;padding:4px;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='${warna}22';this.style.color='${warna}';" onmouseout="this.style.background='none';this.style.color='#64748b';" title="Hapus notifikasi">✕</button>
+                </div>
               </div>
             </div>`;
         });
@@ -3223,6 +3226,25 @@ function tolakPermintaan(id) {
   apiPost('tolakPermintaan', { id, alasan, namaKetua: KETUA_SESSION.nama });
   showToast('❌ Permintaan booking ditolak', 'info');
   drawStatusKuliah();
+}
+
+function hapusNotifikasiBooking(id) {
+  const notifElement = document.getElementById(`notif-${id}`);
+  if (notifElement) {
+    // Animasi fade out
+    notifElement.style.transition = 'opacity 0.3s ease';
+    notifElement.style.opacity = '0';
+    
+    // Hapus dari DOM setelah animasi selesai
+    setTimeout(() => {
+      notifElement.remove();
+      showToast('🗑️ Notifikasi dihapus', 'info');
+    }, 300);
+    
+    // Hapus dari data PERMINTAAN_DATA juga
+    const idx = (PERMINTAAN_DATA.keluar || []).findIndex(p => p.ID === id);
+    if (idx > -1) PERMINTAAN_DATA.keluar.splice(idx, 1);
+  }
 }
 
 async function resetSemuaStatusRuangan() {
