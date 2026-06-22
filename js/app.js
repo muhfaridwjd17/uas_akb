@@ -2912,7 +2912,13 @@ function drawStatusKuliah() {
 
         // Pakai jadwal kelas sendiri untuk tampilan card
         const jadwalR   = adaJadwalSendiri ? jadwalKelasSendiri : [];
-        const adaJadwal = adaJadwalSendiri;
+        
+        // Cek apakah ada jadwal yang BELUM SELESAI
+        const jamSkrg2 = getJamSekarang();
+        const adaJadwalBelumSelesai = jadwalKelasSendiri.some(j => 
+          formatJam(j['Jam Selesai']) > jamSkrg2
+        );
+        const adaJadwal = adaJadwalBelumSelesai;
 
         // Tentukan state
         let state, tagText, pillText;
@@ -2924,7 +2930,17 @@ function drawStatusKuliah() {
         } else if (statusNow === 'Dibooking') {
           state = 'dibooking'; tagText = 'Dibooking'; pillText = 'Booking';
         } else if (adaJadwal) {
-          state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
+          // Ada jadwal tapi belum dimulai atau masih berlangsung
+          const jadwalBelumDimulai = jadwalKelasSendiri.find(j => formatJam(j['Jam Mulai']) > jamSkrg2);
+          const jadwalSedangBerlangsung = jadwalKelasSendiri.find(j => 
+            formatJam(j['Jam Mulai']) <= jamSkrg2 && formatJam(j['Jam Selesai']) > jamSkrg2
+          );
+          
+          if (jadwalSedangBerlangsung) {
+            state = 'sedang-berlangsung-kelas'; tagText = 'Sedang Digunakan'; pillText = 'Live';
+          } else {
+            state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
+          }
         } else {
           state = 'kosong'; tagText = 'Kosong'; pillText = 'Bebas';
         }
@@ -2960,9 +2976,22 @@ function drawStatusKuliah() {
             <div class="rc-info-dosen">${jadwalR[0]['Dosen Pengampu']||'-'}</div>
             <div class="rc-info-jam" style="margin-top:5px;">${formatJam(jadwalR[0]['Jam Mulai'])} – ${formatJam(jadwalR[0]['Jam Selesai'])}</div>`;
         } else {
-          // Cek jadwal kelas lain di ruangan ini hari ini
+          // Cek jadwal sendiri yang sudah lewat (riwayat)
+          const jadwalSendiriSelesai = jadwalKelasSendiri.filter(j => 
+            formatJam(j['Jam Selesai']) <= jamSkrg2
+          ).sort((a,b) => formatJam(b['Jam Selesai']).localeCompare(formatJam(a['Jam Selesai'])))[0];
+          
+          // Atau cek jadwal kelas lain di ruangan ini hari ini
           const jadwalKelasLainHariIni = jadwalRuanganHariIni.filter(j => j.Kelas !== KETUA_SESSION.kelas);
-          if (jadwalKelasLainHariIni.length > 0) {
+          
+          if (jadwalSendiriSelesai) {
+            // Tampilkan riwayat jadwal sendiri yang sudah selesai
+            infoHTML = `
+              <div class="rc-info-label" style="color:#64748b;font-size:8px;">RIWAYAT JADWAL HARI INI</div>
+              <div class="rc-info-matkul" style="color:#cbd5e1;font-size:11px;">${jadwalSendiriSelesai['Nama Mata Kuliah']}</div>
+              <div class="rc-info-dosen" style="color:#64748b;">${jadwalSendiriSelesai['Dosen Pengampu']||'-'}</div>
+              <div style="font-size:9px;color:#64748b;margin-top:3px;">✓ Sudah selesai · ${formatJam(jadwalSendiriSelesai['Jam Mulai'])} – ${formatJam(jadwalSendiriSelesai['Jam Selesai'])}</div>`;
+          } else if (jadwalKelasLainHariIni.length > 0) {
             // Ada jadwal kelas lain tapi ruangan belum dipakai → bisa booking
             const jkl = jadwalKelasLainHariIni[0];
             infoHTML = `
