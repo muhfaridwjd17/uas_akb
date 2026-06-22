@@ -2840,7 +2840,7 @@ function drawStatusKuliah() {
                   \${p['Pesan'] ? '<div style="font-size:10px;color:#64748b;margin-top:4px;">💬 ' + p['Pesan'] + '</div>' : ''}
                 </div>
                 <div style="display:flex;gap:6px;flex-shrink:0;">
-                  <button onclick="accPermintaan('\${p.ID}',''\${p['Ruangan']}'')"
+                  <button onclick="accPermintaan('\${p.ID}','\${p['Ruangan']}')"
                     style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;
                     background:#052e16;color:#4ade80;border:1.5px solid #16a34a;">
                     ✅ ACC
