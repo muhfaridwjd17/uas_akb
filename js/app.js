@@ -2827,7 +2827,7 @@ function drawStatusKuliah() {
       if (masuk.length > 0) {
         panelHTML += '<div style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:10px;">📨 Permintaan Booking Masuk (' + masuk.length + ')</div>';
         masuk.forEach(p => {
-          panelHTML += \`
+          panelHTML += `
             <div style="background:#0f172a;border:1.5px solid #fbbf24;border-radius:12px;padding:14px;margin-bottom:10px;">
               <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
                 <div>
@@ -2840,7 +2840,7 @@ function drawStatusKuliah() {
                   \${p['Pesan'] ? '<div style="font-size:10px;color:#64748b;margin-top:4px;">💬 ' + p['Pesan'] + '</div>' : ''}
                 </div>
                 <div style="display:flex;gap:6px;flex-shrink:0;">
-                  <button onclick="accPermintaan('\${p.ID}','\${p['Ruangan']}')"
+                  <button onclick="accPermintaan('${p.ID}','${p['Ruangan']}')"
                     style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;
                     background:#052e16;color:#4ade80;border:1.5px solid #16a34a;">
                     ✅ ACC
@@ -2852,7 +2852,7 @@ function drawStatusKuliah() {
                   </button>
                 </div>
               </div>
-            </div>\`;
+            </div>`;
         });
       }
 
@@ -2863,7 +2863,7 @@ function drawStatusKuliah() {
         keluarAktif.forEach(p => {
           const warna  = p.Status === 'Disetujui' ? '#4ade80' : p.Status === 'Ditolak' ? '#f87171' : '#fbbf24';
           const icon   = p.Status === 'Disetujui' ? '✅' : p.Status === 'Ditolak' ? '❌' : '⏳';
-          panelHTML += \`
+          panelHTML += `
             <div style="background:var(--bg-elevated);border:1px solid \${warna}44;border-radius:10px;padding:12px;margin-bottom:8px;">
               <div style="display:flex;align-items:center;justify-content:space-between;">
                 <div>
@@ -2872,7 +2872,7 @@ function drawStatusKuliah() {
                 </div>
                 <div style="font-size:11px;font-weight:700;color:\${warna};">\${icon} \${p.Status}</div>
               </div>
-            </div>\`;
+            </div>`;
         });
       }
 
