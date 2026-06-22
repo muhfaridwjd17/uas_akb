@@ -2857,7 +2857,8 @@ function drawStatusKuliah() {
       }
 
       // Permintaan keluar (status)
-      const keluarAktif = keluar.filter(p => p.Status === 'Menunggu' || p.Status === 'Disetujui' || p.Status === 'Ditolak').slice(-3);
+      const _dismissed = (() => { try { return JSON.parse(localStorage.getItem('dismissed_notif') || '[]'); } catch(e) { return []; } })();
+      const keluarAktif = keluar.filter(p => (p.Status === 'Menunggu' || p.Status === 'Disetujui' || p.Status === 'Ditolak') && !_dismissed.includes(p.ID)).slice(-3);
       if (keluarAktif.length > 0) {
         panelHTML += '<div style="font-size:13px;font-weight:700;color:#94a3b8;margin-bottom:10px;margin-top:' + (masuk.length > 0 ? '16px' : '0') + ';">📤 Permintaan Booking Keluar</div>';
         keluarAktif.forEach(p => {
@@ -2930,7 +2931,17 @@ function drawStatusKuliah() {
         } else if (statusNow === 'Dibooking') {
           state = 'dibooking'; tagText = 'Dibooking'; pillText = 'Booking';
         } else if (adaJadwal) {
-          state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
+          // Ada jadwal tapi belum dimulai atau masih berlangsung
+          const jadwalBelumDimulai = jadwalKelasSendiri.find(j => formatJam(j['Jam Mulai']) > jamSkrg2);
+          const jadwalSedangBerlangsung = jadwalKelasSendiri.find(j => 
+            formatJam(j['Jam Mulai']) <= jamSkrg2 && formatJam(j['Jam Selesai']) > jamSkrg2
+          );
+          
+          if (jadwalSedangBerlangsung) {
+            state = 'sedang-berlangsung-kelas'; tagText = 'Sedang Digunakan'; pillText = 'Live';
+          } else {
+            state = 'belum-kuliah'; tagText = 'Belum Kuliah'; pillText = 'Terjadwal';
+          }
         } else {
           state = 'kosong'; tagText = 'Kosong'; pillText = 'Bebas';
         }
@@ -3263,6 +3274,13 @@ function hapusNotifikasiBooking(id) {
     // Hapus dari data PERMINTAAN_DATA juga
     const idx = (PERMINTAAN_DATA.keluar || []).findIndex(p => p.ID === id);
     if (idx > -1) PERMINTAAN_DATA.keluar.splice(idx, 1);
+
+    // Simpan ID ke localStorage supaya tidak muncul lagi saat login ulang
+    try {
+      const dismissed = JSON.parse(localStorage.getItem('dismissed_notif') || '[]');
+      if (!dismissed.includes(id)) dismissed.push(id);
+      localStorage.setItem('dismissed_notif', JSON.stringify(dismissed));
+    } catch(e) {}
   }
 }
 
