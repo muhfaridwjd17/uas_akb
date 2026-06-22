@@ -2247,6 +2247,8 @@ function loadScript(src) {
 // STATUS KULIAH — JADWAL 2 (SEDANG / BELUM KULIAH)
 // ================================================
 let STATUS_KULIAH_DATA = {};
+let PERMINTAAN_DATA   = { masuk: [], keluar: [] }; // permintaan booking
+let _permintaanInterval = null;
 let STATUS_INTERVAL = null;
 let KETUA_SESSION = null;
 
@@ -2289,6 +2291,63 @@ async function renderStatusKuliah() {
     await loadStatusKuliah(); // ini yang pasang timer baru jika ada booking baru
     drawStatusKuliah();
   }, 20000);
+}
+
+// Load permintaan booking masuk & keluar
+async function loadPermintaan() {
+  if (!KETUA_SESSION) return;
+  try {
+    const urlMasuk  = `${APPS_SCRIPT_URL}?action=getPermintaan&kelasPemilik=${encodeURIComponent(KETUA_SESSION.kelas)}`;
+    const urlKeluar = `${APPS_SCRIPT_URL}?action=getPermintaan&kelasPeminta=${encodeURIComponent(KETUA_SESSION.kelas)}`;
+    const [resMasuk, resKeluar] = await Promise.all([
+      fetch(urlMasuk,  { redirect:'follow' }).then(r => r.json()),
+      fetch(urlKeluar, { redirect:'follow' }).then(r => r.json())
+    ]);
+    const masukBaru  = resMasuk.status  === 'success' ? (resMasuk.data  || []) : [];
+    const keluarBaru = resKeluar.status === 'success' ? (resKeluar.data || []) : [];
+
+    // Cek apakah ada permintaan masuk baru
+    const jumlahMasukLama = PERMINTAAN_DATA.masuk.length;
+    PERMINTAAN_DATA = { masuk: masukBaru, keluar: keluarBaru };
+
+    // Notif kalau ada permintaan masuk baru
+    if (masukBaru.length > jumlahMasukLama && jumlahMasukLama >= 0) {
+      const baru = masukBaru[masukBaru.length - 1];
+      showToast(`📨 Permintaan booking dari ${baru['Kelas Peminta']} untuk ruangan ${baru['Ruangan']}!`, 'info', 8000);
+    }
+
+    // Cek permintaan keluar yang baru disetujui/ditolak
+    keluarBaru.forEach(p => {
+      const lama = (PERMINTAAN_DATA.keluar || []).find(l => l.ID === p.ID);
+      if (!lama) return;
+      if (lama.Status === 'Menunggu' && p.Status === 'Disetujui') {
+        showToast(`✅ Booking ${p['Ruangan']} DISETUJUI oleh ${p['Kelas Pemilik']}!`, 'success', 8000);
+        // Update STATUS_KULIAH_DATA langsung
+        STATUS_KULIAH_DATA[p['Ruangan']] = {
+          status:'Dibooking', mataKuliah:p['Mata Kuliah'], dosen:p['Dosen'],
+          jamMulai:p['Jam Mulai'], jamSelesai:p['Jam Selesai'],
+          kelas:p['Kelas Peminta'], namaKetua:p['Ketua Peminta']
+        };
+        pasangTimerRuangan(p['Ruangan']);
+        refreshSemuaTab();
+      }
+      if (lama.Status === 'Menunggu' && p.Status === 'Ditolak') {
+        showToast(`❌ Booking ${p['Ruangan']} DITOLAK oleh ${p['Kelas Pemilik']}`, 'error', 8000);
+      }
+    });
+
+    // Update badge notifikasi di navbar
+    updateBadgeNotifPermintaan();
+  } catch(e) { /* silent fail */ }
+}
+
+// Badge notifikasi di navbar
+function updateBadgeNotifPermintaan() {
+  const jumlah = PERMINTAAN_DATA.masuk.filter(p => p.Status === 'Menunggu').length;
+  let badge = document.getElementById('notif-badge-permintaan');
+  if (!badge) return;
+  badge.textContent = jumlah;
+  badge.style.display = jumlah > 0 ? 'inline-flex' : 'none';
 }
 
 async function loadStatusKuliah() {
@@ -2756,6 +2815,71 @@ function drawStatusKuliah() {
       </button>
     </div>
 
+    ${(() => {
+      // Panel permintaan masuk
+      const masuk = (PERMINTAAN_DATA.masuk || []).filter(p => p.Status === 'Menunggu');
+      const keluar = (PERMINTAAN_DATA.keluar || []).filter(p => p.Status !== '');
+      if (masuk.length === 0 && keluar.length === 0) return '';
+
+      let panelHTML = '<div style="margin-bottom:20px;">';
+
+      // Permintaan masuk (perlu di-ACC/tolak)
+      if (masuk.length > 0) {
+        panelHTML += '<div style="font-size:13px;font-weight:700;color:#fbbf24;margin-bottom:10px;">📨 Permintaan Booking Masuk (' + masuk.length + ')</div>';
+        masuk.forEach(p => {
+          panelHTML += \`
+            <div style="background:#0f172a;border:1.5px solid #fbbf24;border-radius:12px;padding:14px;margin-bottom:10px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+                <div>
+                  <div style="font-size:12px;font-weight:700;color:#f1f5f9;margin-bottom:4px;">
+                    🎓 \${p['Kelas Peminta']} — \${p['Ketua Peminta']}
+                  </div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📚 \${p['Mata Kuliah']}</div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">👤 \${p['Dosen']}</div>
+                  <div style="font-size:11px;color:#94a3b8;margin-bottom:2px;">📍 \${p['Ruangan']} · ⏰ \${p['Jam Mulai']} – \${p['Jam Selesai']}</div>
+                  \${p['Pesan'] ? '<div style="font-size:10px;color:#64748b;margin-top:4px;">💬 ' + p['Pesan'] + '</div>' : ''}
+                </div>
+                <div style="display:flex;gap:6px;flex-shrink:0;">
+                  <button onclick="accPermintaan('\${p.ID}',''\${p['Ruangan']}'')"
+                    style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;
+                    background:#052e16;color:#4ade80;border:1.5px solid #16a34a;">
+                    ✅ ACC
+                  </button>
+                  <button onclick="tolakPermintaan('\${p.ID}')"
+                    style="font-size:11px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer;
+                    background:#1c0505;color:#f87171;border:1.5px solid #991b1b;">
+                    ❌ Tolak
+                  </button>
+                </div>
+              </div>
+            </div>\`;
+        });
+      }
+
+      // Permintaan keluar (status)
+      const keluarAktif = keluar.filter(p => p.Status === 'Menunggu' || p.Status === 'Disetujui' || p.Status === 'Ditolak').slice(-3);
+      if (keluarAktif.length > 0) {
+        panelHTML += '<div style="font-size:13px;font-weight:700;color:#94a3b8;margin-bottom:10px;margin-top:' + (masuk.length > 0 ? '16px' : '0') + ';">📤 Permintaan Booking Keluar</div>';
+        keluarAktif.forEach(p => {
+          const warna  = p.Status === 'Disetujui' ? '#4ade80' : p.Status === 'Ditolak' ? '#f87171' : '#fbbf24';
+          const icon   = p.Status === 'Disetujui' ? '✅' : p.Status === 'Ditolak' ? '❌' : '⏳';
+          panelHTML += \`
+            <div style="background:var(--bg-elevated);border:1px solid \${warna}44;border-radius:10px;padding:12px;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                  <div style="font-size:11px;font-weight:700;color:#f1f5f9;">📍 \${p['Ruangan']} — \${p['Mata Kuliah']}</div>
+                  <div style="font-size:10px;color:#64748b;margin-top:2px;">⏰ \${p['Jam Mulai']} – \${p['Jam Selesai']} · ke \${p['Kelas Pemilik']}</div>
+                </div>
+                <div style="font-size:11px;font-weight:700;color:\${warna};">\${icon} \${p.Status}</div>
+              </div>
+            </div>\`;
+        });
+      }
+
+      panelHTML += '</div>';
+      return panelHTML;
+    })()}
+
     <div class="rm-grid">
       ${semuaRuangan.map(rObj => {
         const namaR     = rObj['Nama Ruangan'];
@@ -2936,13 +3060,48 @@ async function aksiRuangan(aksi, namaR) {
     refreshSemuaTab();
 
   } else if (aksi === 'booking') {
-    tampilModalBooking(namaR);
+    const hariIni = getNamaHariIni();
+    const jadwalKelasLainDisini = STATE.data.jadwal.filter(j =>
+      j.Ruangan === namaR && j.Hari === hariIni && j.Kelas !== KETUA_SESSION.kelas
+    );
+    tampilModalBooking(namaR, jadwalKelasLainDisini);
   }
 }
 
 // Modal booking untuk ruangan kosong
-function tampilModalBooking(namaR) {
+function tampilModalBooking(namaR, jadwalKelasLain) {
   document.getElementById('bk-modal-wrap')?.remove();
+
+  // Cek apakah perlu persetujuan (ada jadwal kelas lain hari ini di ruangan ini)
+  const perluPersetujuan = jadwalKelasLain && jadwalKelasLain.length > 0;
+  const jkl = perluPersetujuan ? jadwalKelasLain[0] : null;
+
+  // Banner info kelas lain
+  const bannerKelasLain = perluPersetujuan ? `
+    <div style="background:#0f172a;border:1.5px solid #2563eb;border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+      <div style="font-size:10px;font-weight:700;color:#60a5fa;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">
+        ⚠️ Ruangan ini ada jadwal kelas lain hari ini
+      </div>
+      <div style="font-size:12px;font-weight:700;color:#f1f5f9;margin-bottom:3px;">${jkl['Nama Mata Kuliah']}</div>
+      <div style="display:flex;gap:12px;margin-top:4px;flex-wrap:wrap;">
+        <span style="font-size:10px;color:#94a3b8;">👤 ${jkl['Dosen Pengampu']||'-'}</span>
+        <span style="font-size:10px;color:#94a3b8;">🎓 ${jkl['Kelas']}</span>
+        <span style="font-size:10px;color:#94a3b8;">⏰ ${formatJam(jkl['Jam Mulai'])} – ${formatJam(jkl['Jam Selesai'])}</span>
+      </div>
+      <div style="font-size:10px;color:#fbbf24;margin-top:8px;padding-top:8px;border-top:1px solid #1e3a8a;">
+        📨 Booking memerlukan persetujuan ketua kelas <b>${jkl['Kelas']}</b>
+      </div>
+    </div>` : '';
+
+  const fieldPesan = perluPersetujuan ? `
+    <div class="bk-field">
+      <label>PESAN <span style="font-size:10px;color:#64748b;">(opsional)</span></label>
+      <input type="text" id="bk-pesan" placeholder="Alasan booking, misal: kelas online, dsb...">
+    </div>` : '';
+
+  const btnLabel  = perluPersetujuan ? '📨 Kirim Permintaan' : '📅 Booking Sekarang';
+  const kelasPml  = perluPersetujuan ? `'${jkl['Kelas']}'` : 'null';
+
   const wrap = document.createElement('div');
   wrap.id = 'bk-modal-wrap';
   wrap.className = 'bk-overlay';
@@ -2950,6 +3109,7 @@ function tampilModalBooking(namaR) {
     <div class="bk-modal">
       <div class="bk-title">📅 Booking Ruangan</div>
       <div class="bk-sub">📍 ${namaR}</div>
+      ${bannerKelasLain}
       <div class="bk-field">
         <label>Nama Ketua Kelas</label>
         <input type="text" id="bk-ketua" value="${KETUA_SESSION.nama}" disabled>
@@ -2976,20 +3136,24 @@ function tampilModalBooking(namaR) {
           <input type="time" id="bk-jam-selesai">
         </div>
       </div>
+      ${fieldPesan}
       <div class="bk-actions">
         <button class="bk-cancel" onclick="document.getElementById('bk-modal-wrap').remove()">Batal</button>
-        <button class="bk-submit" onclick="submitBooking('${namaR}')">📅 Booking Sekarang</button>
+        <button class="bk-submit" onclick="submitBooking('${namaR}', ${perluPersetujuan}, ${kelasPml})">
+          ${btnLabel}
+        </button>
       </div>
     </div>`;
   wrap.addEventListener('click', e => { if (e.target === wrap) wrap.remove(); });
   document.body.appendChild(wrap);
 }
 
-async function submitBooking(namaR) {
+function submitBooking(namaR, perluPersetujuan, kelasPemilik) {
   const mataKuliah = document.getElementById('bk-matkul')?.value.trim();
   const dosen      = document.getElementById('bk-dosen')?.value.trim();
   const jamMulai   = document.getElementById('bk-jam-mulai')?.value;
   const jamSelesai = document.getElementById('bk-jam-selesai')?.value;
+  const pesan      = document.getElementById('bk-pesan')?.value?.trim() || '';
 
   if (!mataKuliah || !dosen || !jamMulai || !jamSelesai) {
     showToast('⚠️ Semua field wajib diisi', 'warning'); return;
@@ -2998,18 +3162,67 @@ async function submitBooking(namaR) {
     showToast('⚠️ Jam selesai harus lebih dari jam mulai', 'warning'); return;
   }
 
-  STATUS_KULIAH_DATA[namaR] = {
-    status:'Dibooking', mataKuliah, dosen, jamMulai, jamSelesai,
-    kelas:KETUA_SESSION.kelas, namaKetua:KETUA_SESSION.nama, waktuUpdate:getJamSekarang()
-  };
-  apiPost('bookingRuangan', {
-    ruangan:namaR, statusBaru:'Dibooking', mataKuliah, dosen, jamMulai, jamSelesai,
-    kelas:KETUA_SESSION.kelas, namaKetua:KETUA_SESSION.nama
-  });
   document.getElementById('bk-modal-wrap')?.remove();
-  showToast(`✅ ${namaR} berhasil dibooking!`, 'success');
-  pasangTimerRuangan(namaR); // pasang timer presisi langsung setelah booking
-  refreshSemuaTab(); // update kedua tab langsung
+
+  if (perluPersetujuan && kelasPemilik) {
+    // Kirim permintaan — tunggu persetujuan
+    const tempId = 'PB-TEMP-' + Date.now();
+    PERMINTAAN_DATA.keluar.push({
+      ID: tempId, Ruangan: namaR,
+      'Kelas Peminta': KETUA_SESSION.kelas, 'Ketua Peminta': KETUA_SESSION.nama,
+      'Kelas Pemilik': kelasPemilik, 'Mata Kuliah': mataKuliah,
+      Dosen: dosen, 'Jam Mulai': jamMulai, 'Jam Selesai': jamSelesai,
+      Status: 'Menunggu', Pesan: pesan
+    });
+    apiPost('kirimPermintaanBooking', {
+      ruangan: namaR, kelasPeminta: KETUA_SESSION.kelas,
+      ketuaPeminta: KETUA_SESSION.nama, kelasPemilik,
+      mataKuliah, dosen, jamMulai, jamSelesai, pesan
+    });
+    showToast(`📨 Permintaan booking ${namaR} dikirim ke ketua ${kelasPemilik}`, 'info', 6000);
+  } else {
+    // Booking langsung
+    STATUS_KULIAH_DATA[namaR] = {
+      status:'Dibooking', mataKuliah, dosen, jamMulai, jamSelesai,
+      kelas:KETUA_SESSION.kelas, namaKetua:KETUA_SESSION.nama, waktuUpdate:getJamSekarang()
+    };
+    apiPost('bookingRuangan', {
+      ruangan:namaR, statusBaru:'Dibooking', mataKuliah, dosen, jamMulai, jamSelesai,
+      kelas:KETUA_SESSION.kelas, namaKetua:KETUA_SESSION.nama
+    });
+    showToast(`✅ ${namaR} berhasil dibooking!`, 'success');
+    pasangTimerRuangan(namaR);
+    refreshSemuaTab();
+  }
+}
+
+function accPermintaan(id, ruangan) {
+  // Update lokal dulu
+  const idx = PERMINTAAN_DATA.masuk.findIndex(p => p.ID === id);
+  if (idx > -1) {
+    const p = PERMINTAAN_DATA.masuk[idx];
+    // Ruangan langsung dibooking di lokal
+    STATUS_KULIAH_DATA[p['Ruangan']] = {
+      status:'Dibooking', mataKuliah:p['Mata Kuliah'], dosen:p['Dosen'],
+      jamMulai:p['Jam Mulai'], jamSelesai:p['Jam Selesai'],
+      kelas:p['Kelas Peminta'], namaKetua:p['Ketua Peminta']
+    };
+    PERMINTAAN_DATA.masuk.splice(idx, 1);
+    pasangTimerRuangan(p['Ruangan']);
+  }
+  apiPost('accPermintaan', { id, namaKetua: KETUA_SESSION.nama });
+  showToast('✅ Permintaan booking disetujui!', 'success');
+  refreshSemuaTab();
+  drawStatusKuliah();
+}
+
+function tolakPermintaan(id) {
+  const alasan = prompt('Alasan penolakan (opsional):') || 'Ditolak';
+  const idx = PERMINTAAN_DATA.masuk.findIndex(p => p.ID === id);
+  if (idx > -1) PERMINTAAN_DATA.masuk.splice(idx, 1);
+  apiPost('tolakPermintaan', { id, alasan, namaKetua: KETUA_SESSION.nama });
+  showToast('❌ Permintaan booking ditolak', 'info');
+  drawStatusKuliah();
 }
 
 async function resetSemuaStatusRuangan() {
@@ -3036,6 +3249,10 @@ async function loginKetua() {
       localStorage.setItem('ketua_session', JSON.stringify(KETUA_SESSION));
       showToast(`✅ Login berhasil! Selamat datang, ${KETUA_SESSION.nama}`, 'success');
       renderStatusKuliah();
+      // Load permintaan + pasang polling tiap 30 detik
+      loadPermintaan();
+      if (_permintaanInterval) clearInterval(_permintaanInterval);
+      _permintaanInterval = setInterval(loadPermintaan, 30000);
     } else {
       showToast('❌ ' + (json.message || 'Username atau password salah'), 'error');
     }
@@ -3047,6 +3264,8 @@ async function loginKetua() {
 function logoutKetua() {
   KETUA_SESSION = null;
   localStorage.removeItem('ketua_session');
+  PERMINTAAN_DATA = { masuk: [], keluar: [] };
+  if (_permintaanInterval) { clearInterval(_permintaanInterval); _permintaanInterval = null; }
   showToast('👋 Logout berhasil', 'info');
   renderStatusKuliah();
 }
