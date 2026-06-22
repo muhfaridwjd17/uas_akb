@@ -1772,49 +1772,35 @@ async function renderJadwalPublik() {
 
   const jadwal = STATE.data.jadwal;
 
-  // Isi filter dropdown kelas & ruangan
+  // Isi filter dropdown kelas
   const kelasEl = document.getElementById('jadwal-publik-filter-kelas');
   const ruanganEl = document.getElementById('jadwal-publik-filter-ruangan');
-
-  // Simpan pilihan sebelumnya supaya tidak reset saat re-render
-  const savedKelas = kelasEl?.value || 'all';
-  const savedRuangan = ruanganEl?.value || 'all';
-
-  // Selalu rebuild dropdown agar sinkron dengan data master terbaru
-  if (kelasEl) {
-    kelasEl.innerHTML = '<option value="all">— Semua Kelas —</option>';
+  if (kelasEl && kelasEl.options.length <= 1) {
     [...new Set(jadwal.map(j => j.Kelas).filter(Boolean))].sort().forEach(k => {
-      kelasEl.innerHTML += `<option value="${k}"${savedKelas === k ? ' selected' : ''}>${k}</option>`;
+      kelasEl.innerHTML += `<option value="${k}">${k}</option>`;
     });
   }
-  // Dropdown ruangan: pakai master Ruangan, fallback ke data jadwal
-  if (ruanganEl) {
-    ruanganEl.innerHTML = '<option value="all">— Semua Ruangan —</option>';
+  if (ruanganEl && ruanganEl.options.length <= 1) {
     const masterRuangan = STATE.data.ruangan.map(r => r['Nama Ruangan']).filter(Boolean).sort();
     const sumberRuangan = masterRuangan.length > 0
       ? masterRuangan
       : [...new Set(jadwal.map(j => j.Ruangan).filter(Boolean))].sort();
     sumberRuangan.forEach(r => {
-      ruanganEl.innerHTML += `<option value="${r}"${savedRuangan === r ? ' selected' : ''}>${r}</option>`;
+      ruanganEl.innerHTML += `<option value="${r}">${r}</option>`;
     });
   }
 
   const fKelas = kelasEl?.value || 'all';
   const fRuangan = ruanganEl?.value || 'all';
 
-  // Ambil nomor/kode ruangan: bagian sebelum tanda kurung, trim, lowercase
-  // Contoh: "AN 206 (LAB SIMULASI)" → "an 206", "AN 206" → "an 206"
+  // Cocokkan kode ruangan saja (abaikan keterangan dalam kurung)
+  // Contoh: "AN 206" cocok dengan "AN 206 (LAB SIMULASI...)"
   function kodeRuangan(nama) {
     return (nama || '').replace(/\(.*\)/, '').trim().toLowerCase();
   }
-
-  // Filter ruangan: cocokkan nomor ruangan saja (abaikan keterangan dalam kurung)
   const filtered = jadwal.filter(j => {
     const matchKelas = fKelas === 'all' || j.Kelas === fKelas;
-    let matchRuangan = fRuangan === 'all';
-    if (!matchRuangan) {
-      matchRuangan = kodeRuangan(j.Ruangan) === kodeRuangan(fRuangan);
-    }
+    const matchRuangan = fRuangan === 'all' || kodeRuangan(j.Ruangan) === kodeRuangan(fRuangan);
     return matchKelas && matchRuangan;
   });
 
