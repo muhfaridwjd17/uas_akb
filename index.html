@@ -128,6 +128,7 @@
       <a class="nav-item" data-page="matkul"><span class="nav-icon">📚</span> Mata Kuliah</a>
       <a class="nav-item" data-page="ruangan"><span class="nav-icon">🚪</span> Ruangan</a>
       <a class="nav-item" data-page="akun-ketua"><span class="nav-icon">🔑</span> Akun Ketua Kelas</a>
+      <a class="nav-item" data-page="akun-sekjur"><span class="nav-icon">🏫</span> Akun Sekjur</a>
     </nav>
     <div class="sidebar-footer">
       <button class="theme-toggle" onclick="toggleTheme()">🌙 Mode Gelap</button>
@@ -322,6 +323,14 @@
       <section class="section">
         <div class="section-header"><div class="section-eyebrow">Pengaturan</div><h2 class="section-title">Akun Ketua Kelas</h2><p class="section-sub">Kelola akun login ketua kelas yang bisa mengubah status kehadiran kuliah</p></div>
         <div id="akun-ketua-content"></div>
+      </section>
+    </div>
+
+    <!-- PAGE: AKUN SEKJUR -->
+    <div class="page" id="page-akun-sekjur">
+      <section class="section">
+        <div class="section-header"><div class="section-eyebrow">Pengaturan</div><h2 class="section-title">Akun Sekjur</h2><p class="section-sub">Kelola akun login Sekretaris Jurusan untuk akses menu Jadwal Kuliah</p></div>
+        <div id="akun-sekjur-content"></div>
       </section>
     </div>
 
@@ -546,6 +555,34 @@
     <div class="form-actions">
       <button class="btn btn-ghost" onclick="closeAkunKetuaModal()">Batal</button>
       <button class="btn btn-primary" onclick="submitAkunKetua()">💾 Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AKUN SEKJUR -->
+<div class="modal-overlay" id="modal-akun-sekjur">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-skj-title">Tambah Akun Sekjur</div>
+      <div class="modal-sub">Akun ini digunakan Sekretaris Jurusan untuk login di Jadwal Kuliah</div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label class="form-label">Nama Lengkap <span class="req">*</span></label>
+        <input type="text" id="skj-nama" class="form-input" placeholder="Nama lengkap Sekjur">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Username <span class="req">*</span></label>
+        <input type="text" id="skj-username" class="form-input" placeholder="Username untuk login">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password <span class="req">*</span></label>
+        <input type="text" id="skj-password" class="form-input" placeholder="Password untuk login">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeAkunSekjurModal()">Batal</button>
+      <button class="btn btn-primary" onclick="submitAkunSekjur()">💾 Simpan</button>
     </div>
   </div>
 </div>
