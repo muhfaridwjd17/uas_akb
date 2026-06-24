@@ -122,7 +122,7 @@ function handleChangePassword(e) {
 // ---- STATE ----
 const STATE = {
   currentPage: 'dashboard',
-  data: { mahasiswa: [], dosen: [], staf: [], mataKuliah: [], nilai: [], jadwal: [], akunKetua: [], akunSekjur: [], ruangan: [] },
+  data: { mahasiswa: [], dosen: [], staf: [], mataKuliah: [], nilai: [], jadwal: [], akunKetua: [], ruangan: [] },
   loaded: false,
   editingId: null,
   raporCache: {},
@@ -200,8 +200,7 @@ async function loadAllData(force) {
     STATE.data.mataKuliah = result.data.mataKuliah || [];
     STATE.data.nilai = result.data.nilai || [];
     STATE.data.jadwal = result.data.jadwal || [];
-    STATE.data.akunKetua  = result.data.akunKetua  || [];
-    STATE.data.akunSekjur = result.data.akunSekjur || [];
+    STATE.data.akunKetua = result.data.akunKetua || [];
     STATE.data.ruangan   = result.data.ruangan   || [];
     STATE.loaded = true;
   }
@@ -231,7 +230,6 @@ function navigate(page) {
   }
   if (page === 'status-kuliah') renderStatusKuliah();
   if (page === 'akun-ketua') renderAkunKetuaPage();
-  if (page === 'akun-sekjur') renderAkunSekjurPage();
   if (page === 'ruangan') renderRuanganPage();
 
   document.getElementById('sidebar')?.classList.remove('open');
@@ -1542,51 +1540,13 @@ function downloadRaporPDF(nim, namaLengkap) {
 // ================================================
 const HARI_ORDER = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 
-let SEKJUR_SESSION = null;
-
 async function renderJadwalPage() {
   updateTopbar('Jadwal Kuliah', 'Kelola jadwal mata kuliah per hari dan jam');
   await loadAllData();
   const container = document.getElementById('jadwal-content');
   if (!container) return;
 
-  // Cek session Sekjur dari localStorage
-  if (!SEKJUR_SESSION) {
-    const saved = localStorage.getItem('sekjur_session');
-    if (saved) { try { SEKJUR_SESSION = JSON.parse(saved); } catch(e) {} }
-  }
-
-  // Tampilkan login box jika belum login
-  if (!SEKJUR_SESSION) {
-    container.innerHTML = `
-      <div style="max-width:400px;margin:60px auto;">
-        <div class="card"><div class="card-body">
-          <div style="font-weight:800;font-size:15px;margin-bottom:14px;">🔐 Login Sekretaris Jurusan</div>
-          <div class="form-group" style="margin-bottom:12px;">
-            <label class="form-label">Username</label>
-            <input type="text" id="sekjur-username" class="form-input" placeholder="Username Sekjur">
-          </div>
-          <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label">Password</label>
-            <div class="password-field-wrap">
-              <input type="password" id="sekjur-password" class="form-input" placeholder="Password">
-              <button type="button" class="btn-toggle-eye" onclick="togglePasswordVisibility('sekjur-password', this)" title="Lihat/Sembunyikan password">
-                <svg class="icon-eye-open" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                <svg class="icon-eye-closed" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-              </button>
-            </div>
-          </div>
-          <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="loginSekjur()">🔐 Login sebagai Sekjur</button>
-        </div></div>
-      </div>`;
-    return;
-  }
-
   container.innerHTML = `
-    <div style="background:var(--accent-subtle);border:1px solid var(--accent-border);border-radius:12px;padding:10px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <span style="font-weight:700;color:var(--accent);">🏫 Login sebagai Sekjur: ${SEKJUR_SESSION.nama}</span>
-      <button class="btn btn-ghost btn-sm" onclick="logoutSekjur()">Keluar</button>
-    </div>
     <div class="filter-bar-wrap">
       <div class="filter-row">
         <div class="filter-group">
@@ -3137,8 +3097,11 @@ async function aksiRuangan(aksi, namaR) {
 
   } else if (aksi === 'booking') {
     const hariIni = getNamaHariIni();
+    const jamSkrg = getJamSekarang();
+    // Hanya minta ACC kalau jam selesai jadwal kelas lain BELUM lewat
     const jadwalKelasLainDisini = STATE.data.jadwal.filter(j =>
-      j.Ruangan === namaR && j.Hari === hariIni && j.Kelas !== KETUA_SESSION.kelas
+      j.Ruangan === namaR && j.Hari === hariIni && j.Kelas !== KETUA_SESSION.kelas &&
+      formatJam(j['Jam Selesai']) > jamSkrg
     );
     tampilModalBooking(namaR, jadwalKelasLainDisini);
   }
@@ -3600,146 +3563,6 @@ function hapusAkunKetua(id) {
   apiPost('deleteAkunKetua', { id }); // fire-and-forget
   showToast('🗑️ Akun berhasil dihapus', 'warning');
   renderAkunKetuaTable();
-}
-
-
-// ================================================
-// AKUN SEKJUR — LOGIN / LOGOUT
-// ================================================
-async function loginSekjur() {
-  const username = document.getElementById('sekjur-username').value.trim();
-  const password = document.getElementById('sekjur-password').value.trim();
-  if (!username || !password) { showToast('⚠️ Isi username dan password', 'warning'); return; }
-  if (!APPS_SCRIPT_URL) { showToast('⚠️ APPS_SCRIPT_URL belum diisi', 'error'); return; }
-
-  showToast('⏳ Memeriksa akun...', 'info');
-  const url = `${APPS_SCRIPT_URL}?action=loginSekjur&username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`;
-  try {
-    const res  = await fetch(url, { redirect: 'follow' });
-    const json = await res.json();
-    if (json.status === 'success') {
-      SEKJUR_SESSION = json.data;
-      localStorage.setItem('sekjur_session', JSON.stringify(SEKJUR_SESSION));
-      showToast(`✅ Login berhasil! Selamat datang, ${SEKJUR_SESSION.nama}`, 'success');
-      renderJadwalPage();
-    } else {
-      showToast('❌ ' + (json.message || 'Username atau password salah'), 'error');
-    }
-  } catch(e) {
-    showToast('❌ Gagal terhubung ke server', 'error');
-  }
-}
-
-function logoutSekjur() {
-  SEKJUR_SESSION = null;
-  localStorage.removeItem('sekjur_session');
-  showToast('👋 Logout Sekjur berhasil', 'info');
-  renderJadwalPage();
-}
-
-// ================================================
-// AKUN SEKJUR — CRUD PAGE
-// ================================================
-async function renderAkunSekjurPage() {
-  updateTopbar('Akun Sekjur', 'Kelola akun login Sekretaris Jurusan untuk akses Jadwal Kuliah');
-  await loadAllData();
-  const container = document.getElementById('akun-sekjur-content');
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="filter-bar-wrap">
-      <div class="filter-row">
-        <div class="filter-group" style="flex:1;">
-          <label class="filter-label">🔍 Cari</label>
-          <input type="text" id="skj-search" class="filter-input" placeholder="Cari nama, username..." oninput="renderAkunSekjurTable()">
-        </div>
-        <button class="btn btn-primary" onclick="openAkunSekjurModal()">➕ Tambah Akun Sekjur</button>
-      </div>
-    </div>
-    <div id="skj-table-wrap"></div>`;
-
-  renderAkunSekjurTable();
-}
-
-function renderAkunSekjurTable() {
-  const wrap = document.getElementById('skj-table-wrap');
-  if (!wrap) return;
-  const search = (document.getElementById('skj-search')?.value || '').toLowerCase();
-  const filtered = (STATE.data.akunSekjur || []).filter(a =>
-    !search || Object.values(a).some(v => String(v).toLowerCase().includes(search))
-  ).sort((a,b) => String(a.Nama).localeCompare(String(b.Nama)));
-
-  if (filtered.length === 0) {
-    wrap.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏫</div><div class="empty-state-title">Belum ada akun Sekjur</div><div class="empty-state-text">Klik "Tambah Akun Sekjur" untuk menambahkan akun baru</div></div>`;
-    return;
-  }
-
-  wrap.innerHTML = `
-    <div class="nilai-table-container">
-      <table class="data-table data-table-center">
-        <thead><tr><th class="col-left">Nama</th><th>Username</th><th>Password</th><th>Aksi</th></tr></thead>
-        <tbody>
-          ${filtered.map(a => `
-            <tr>
-              <td class="col-left"><strong>${a.Nama}</strong></td>
-              <td style="font-family:monospace;">${a.Username}</td>
-              <td style="font-family:monospace;">${a.Password}</td>
-              <td>
-                <div style="display:flex;gap:6px;justify-content:center;">
-                  <button class="btn-row-action edit" onclick='openAkunSekjurModal(${JSON.stringify(a).replace(/'/g,"&apos;")})' title="Edit">✏️</button>
-                  <button class="btn-row-action delete" onclick="hapusAkunSekjur('${a.ID}')" title="Hapus">🗑️</button>
-                </div>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>`;
-}
-
-function openAkunSekjurModal(data) {
-  STATE.editingId = data ? data.ID : null;
-  document.getElementById('modal-skj-title').textContent = data ? 'Edit Akun Sekjur' : 'Tambah Akun Sekjur';
-  document.getElementById('skj-nama').value     = data ? data.Nama     : '';
-  document.getElementById('skj-username').value = data ? data.Username : '';
-  document.getElementById('skj-password').value = data ? data.Password : '';
-  document.getElementById('modal-akun-sekjur').classList.add('open');
-}
-
-function closeAkunSekjurModal() {
-  document.getElementById('modal-akun-sekjur').classList.remove('open');
-  STATE.editingId = null;
-}
-
-function submitAkunSekjur() {
-  const nama     = document.getElementById('skj-nama').value.trim();
-  const username = document.getElementById('skj-username').value.trim();
-  const password = document.getElementById('skj-password').value.trim();
-  if (!nama || !username || !password) { showToast('⚠️ Semua field wajib diisi', 'warning'); return; }
-
-  const payload = { nama, username, password };
-  if (STATE.editingId) {
-    payload.id = STATE.editingId;
-    const idx = (STATE.data.akunSekjur || []).findIndex(a => a.ID === STATE.editingId);
-    if (idx > -1) STATE.data.akunSekjur[idx] = { ...STATE.data.akunSekjur[idx], Nama: nama, Username: username, Password: password };
-    showToast('✅ Akun berhasil diupdate', 'success');
-    apiPost('editAkunSekjur', payload);
-  } else {
-    const tempId = 'TEMP-' + Date.now();
-    apiPost('addAkunSekjur', payload);
-    if (!STATE.data.akunSekjur) STATE.data.akunSekjur = [];
-    STATE.data.akunSekjur.push({ ID: tempId, Nama: nama, Username: username, Password: password });
-    showToast('✅ Akun Sekjur berhasil ditambahkan', 'success');
-  }
-  closeAkunSekjurModal();
-  renderAkunSekjurTable();
-}
-
-function hapusAkunSekjur(id) {
-  if (!confirm('Yakin ingin menghapus akun Sekjur ini?')) return;
-  STATE.data.akunSekjur = (STATE.data.akunSekjur || []).filter(a => a.ID !== id);
-  apiPost('deleteAkunSekjur', { id });
-  showToast('🗑️ Akun berhasil dihapus', 'warning');
-  renderAkunSekjurTable();
 }
 
 document.addEventListener('DOMContentLoaded', () => {
